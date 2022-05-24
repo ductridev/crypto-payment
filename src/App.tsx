@@ -1,25 +1,211 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useEffect, useState } from 'react';
 import './App.css';
+import { QRCodeSVG } from 'qrcode.react';
+import { P2cBalancer } from 'load-balancers';
+import { getQueryParams } from './utils/functions';
+import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils } from "near-api-js";
+import Web3 from 'web3';
+
+const proxies = [
+  'http://localhost:5000',
+  'http://localhost:5001',
+  'http://localhost:5002',
+  'http://localhost:5003',
+];
+declare var window: any;
+var queries: any = {};
+
+// Initializes the Power of 2 Choices (P2c) Balancer with ten proxies.
+const balancer = new P2cBalancer(proxies.length);
+
+const keyStore = new keyStores.BrowserLocalStorageKeyStore();
 
 function App() {
+  const [wallet, setWallet] = useState("MetaMask");
+  const [buyerAddress, setBuyerAddress] = useState("");
+  const [sellerAddress, setSellerAddress] = useState("");
+  const [amount, setAmount] = useState(0);
+  const [privateKey, setPrivateKey] = useState("");
+  const [transactionHash, setTransactionHash] = useState("");
+
+  const BinanceWeb3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
+  const EthereumWeb3 = new Web3('wss://kovan.infura.io/ws/v3/326c54692f744c85841911be8a4855f5');
+
+  var near;
+
+  const config = {
+    networkId: "testnet",
+    keyStore,
+    nodeUrl: "https://rpc.testnet.near.org",
+    walletUrl: "https://wallet.testnet.near.org",
+    helperUrl: "https://helper.testnet.near.org",
+    explorerUrl: "https://explorer.testnet.near.org",
+    headers: { test: "10" }
+  };
+
+  queries = getQueryParams();
+
+  useEffect(() => {
+    setAmount(queries.amount);
+    setSellerAddress(queries.sellerAddress);
+  }, []);
+
+  const connectWallet = async () => {
+    if (wallet === "MetaMask") {
+      if (typeof window.ethereum !== 'undefined') {
+        console.log('MetaMask Wallet is installed!');
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        setBuyerAddress(accounts[0]);
+      }
+      else {
+        alert("Please install MetaMask Wallet");
+      }
+    }
+    else if (wallet === "Binance") {
+      if (typeof window.BinanceChain !== 'undefined') {
+        console.log('Binance Wallet is installed!');
+        window.BinanceChain
+          .request({
+            method: 'eth_accounts',
+          })
+          .then((result: any) => {
+            setBuyerAddress(result[0]);
+          })
+          .catch((error: any) => {
+            // If the request fails, the Promise will reject with an error.
+          });
+      }
+      else {
+        alert("Please install Binance Wallet");
+      }
+    }
+    else if (wallet === "NEAR") {
+      near = await NEARconnect(config);
+      window.NEARwallet = new WalletConnection(near, "dag_crypto_bridge");
+      if (!window.NEARwallet.isSignedIn()) {
+        window.NEARwallet.requestSignIn();
+      }
+      else {
+        setBuyerAddress(window.NEARwallet.getAccountId());
+      }
+    }
+  }
+
+  const payBill = () => {
+    if (wallet === "MetaMask") {
+      EthereumWeb3.eth.getTransactionCount(buyerAddress).then(async (txCount) => {
+
+        let transaction = {
+          nonce: txCount,
+          from: buyerAddress,
+          gasPrice: EthereumWeb3.utils.toHex(10e9),
+          gas: EthereumWeb3.utils.toHex(25000),
+          to: queries.sellerAddress,
+          value: EthereumWeb3.utils.toHex(EthereumWeb3.utils.toWei(amount.toString()))
+        }
+
+        let signed = await EthereumWeb3.eth.accounts.signTransaction(transaction, privateKey) as any;
+        EthereumWeb3.eth.sendSignedTransaction(signed.rawTransaction).on('receipt', (result) => {
+          setTransactionHash(result.transactionHash);
+        });
+      })
+
+    }
+    else if (wallet === "Binance") {
+      BinanceWeb3.eth.getTransactionCount(buyerAddress).then((txCount) => {
+
+        BinanceWeb3.eth.signTransaction({
+          nonce: txCount,
+          from: buyerAddress,
+          gasPrice: BinanceWeb3.utils.toHex(10e9),
+          gas: BinanceWeb3.utils.toHex(25000),
+          to: queries.sellerAddress,
+          value: BinanceWeb3.utils.toHex(BinanceWeb3.utils.toWei(amount.toString()))
+        }).then((result) => {
+          console.log(result)
+        });
+      })
+
+    }
+    else if (wallet === "NEAR") {
+
+      if (buyerAddress === "") {
+        alert("Please make sure you have connected your wallet!");
+      }
+      else {
+        window.NEARwallet.account().sendMoney(sellerAddress, Web3.utils.toBN(NEARutils.format.parseNearAmount(amount.toString())!.toString()));
+      }
+
+    }
+  }
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+      {/* <p>Make a payment to the seller</p>
+      <p>Seller wallet address: {queries.sellerAddress ? queries.sellerAddress : ''}</p> */}
+      <label htmlFor="walletSelection">Select a wallet to connect so we can be sure that you are the owner of the wallet address. Please make sure you have installed wallet!</label><br />
+      <select id="walletSelection" onChange={(event) => {
+        setWallet(event.target.value);
+      }} value={wallet}>
+        <option value="MetaMask">MetaMask</option>
+        <option value="Binance">Binance</option>
+        <option value="NEAR">NEAR</option>
+      </select>
+      <button onClick={connectWallet}>Connect wallet</button><br />
+      <p>Buyer wallet address: {buyerAddress}</p><br />
+      {
+        wallet === 'NEAR'
+          ? null
+          :
+          <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
+            <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
+              setPrivateKey(e.target.value);
+            }} />
+          </p>
+      }
+      {wallet === 'Binance'
+        ?
+        <a href='https://binance-wallet.gitbook.io/binance-chain-wallet/bew-guides/beginers-guide/acc/backup-wallet#backup-private-key'>Check here if you don't know how to get private key of address.</a>
+        : null
+      }
+      {wallet === 'MetaMask'
+        ?
+        <a href='https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-Export-an-Account-Private-Key'>Check here if you don't know how to get private key of address.</a>
+        : null
+      }
+
+      <p>Billing amount : {queries.amount} {queries.currency}</p>
+      <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
+      {/* Please make sure you have sufficent funds! */}
+      <select id='tokenSelection'>
+        {wallet === 'Binance'
+          ? <option value="Bitcoin">Bitcoin (BTC)</option>
+          : null
+        }
+        {wallet === 'MetaMask'
+          ?
+          <>
+            <option value="Ethereum">Ethereum (ETH)</option>
+            <option value="USDT">USDT</option>
+            <option value="USDC">USDC</option>
+          </>
+          : null
+        }
+        {wallet === 'NEAR'
+          ? <option value="NEAR">NEAR Protocol (NEAR)</option>
+          : null
+        }
+      </select><br />
+      <button onClick={()=> {payBill()}}>Pay The Seller Now!</button>
+      <p>Or scan QR code</p>
+      <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + queries.sellerAddress + '/' + amount} />
+
+      {
+        transactionHash !== ""
+          ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
+          : null
+      }
+    </div >
   );
 }
 
