@@ -11,7 +11,7 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
         "method": "GET",
         "hostname": "rest.coinapi.io",
         "path": "/v1/exchangerate/USD?invert=true",
-        "headers": { 'X-CoinAPI-Key': 'C1540990-6F78-4E87-A795-3A3BF07F4E99' }
+        "headers": { 'X-CoinAPI-Key': process.env.COINAPI_APIKEY }
     };
 
     const username = process.env.USERNAME;
