@@ -7,6 +7,9 @@ import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils
 import Web3 from 'web3';
 import { generateOnRampURL } from '@coinbase/cbpay-js';
 import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const proxies = [
   'http://localhost:5000',
@@ -31,7 +34,7 @@ function App() {
   const [transactionHash, setTransactionHash] = useState("");
 
   const BinanceWeb3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
-  const EthereumWeb3 = new Web3('wss://kovan.infura.io/ws/v3/326c54692f744c85841911be8a4855f5');
+  const EthereumWeb3 = new Web3(process.env.INFURA_API || '');
 
   const config = {
     networkId: "testnet",

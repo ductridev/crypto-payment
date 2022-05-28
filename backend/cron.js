@@ -95,7 +95,7 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
 updateTokenPriceTask.start();
 
 const sendBatchTransaction = cron.schedule("* */3 * * *", async () => {
-    const EthereumWeb3 = new Web3('wss://kovan.infura.io/ws/v3/326c54692f744c85841911be8a4855f5');
+    const EthereumWeb3 = new Web3(process.env.INFURA_API);
     var batch = new EthereumWeb3.BatchRequest();
 
     const username = process.env.USERNAME;
