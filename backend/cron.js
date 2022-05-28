@@ -2,6 +2,7 @@ var cron = require('node-cron');
 const dotenv = require('dotenv');
 const https = require('https');
 const { MongoClient } = require('mongodb');
+const Web3 = require('web3');
 
 dotenv.config();
 
@@ -92,3 +93,59 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
 });
 
 updateTokenPriceTask.start();
+
+const sendBatchTransaction = cron.schedule("* */3 * * *", async () => {
+    const EthereumWeb3 = new Web3('wss://kovan.infura.io/ws/v3/326c54692f744c85841911be8a4855f5');
+    var batch = new EthereumWeb3.BatchRequest();
+
+    const username = process.env.USERNAME;
+    const password = process.env.PASSWORD;
+    const cluster = process.env.CLUSTER;
+    const dbName = "transactions";
+    const collectionName = "Signed Transactions";
+    const collectionName1 = "Receipts";
+
+    const mongoClient = new MongoClient(`mongodb+srv://${username}:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
+        {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        }
+    );
+    mongoClient.connect(function (mongoClientErr, client) {
+        if (mongoClientErr) {
+            console.log('Unable to connect to the MongoDB server. Error:', mongoClientErr);
+        }
+        else {
+            const db = client.db(dbName);
+            var collection = db.collection(collectionName);
+            var collection1 = db.collection(collectionName1);
+
+            collection.find().toArray(function (queryCollectionErr, result) {
+
+                if (queryCollectionErr) {
+
+                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+
+                } else if (result.length) {
+
+                    batch.add(
+                        EthereumWeb3.eth.sendSignedTransaction(result.rawTransaction).on('receipt', (_result) => {
+                            collection1.insertOne({ receipt: _result.transactionHash }, (insertCollectionErr, __result) => {
+                                if (insertCollectionErr) {
+                                    console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
+                                } else {
+                                    console.log(`Inserted ${__result.length} documents into the "${collectionName}" collection. The documents inserted with "_id" are: ${__result.insertedId}`);
+                                }
+                            })
+                        })
+                    );
+                }
+
+            });
+            batch.execute();
+            client.close();
+        }
+    });
+})
+
+sendBatchTransaction.start();

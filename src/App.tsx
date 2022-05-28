@@ -5,6 +5,8 @@ import { P2cBalancer } from 'load-balancers';
 import { getQueryParams } from './utils/functions';
 import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils } from "near-api-js";
 import Web3 from 'web3';
+import { generateOnRampURL } from '@coinbase/cbpay-js';
+import axios from 'axios';
 
 const proxies = [
   'http://localhost:5000',
@@ -31,8 +33,6 @@ function App() {
   const BinanceWeb3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
   const EthereumWeb3 = new Web3('wss://kovan.infura.io/ws/v3/326c54692f744c85841911be8a4855f5');
 
-  var near;
-
   const config = {
     networkId: "testnet",
     keyStore,
@@ -49,6 +49,13 @@ function App() {
     setAmount(queries.amount);
     setSellerAddress(queries.sellerAddress);
   }, []);
+
+  const onRampURL = generateOnRampURL({
+    appId: "1dbd2a0b94",
+    destinationWallets: [
+      { address: "0x123456", assets: ['ETH', 'BTC', 'SOL', 'AVAX', 'DASH', 'ATOM', 'DOGE', 'ETC', 'LTC', 'DOT', 'ZEC', 'BCH', 'ALGO'], }
+    ]
+  });
 
   const connectWallet = async () => {
     if (wallet === "MetaMask") {
@@ -80,34 +87,40 @@ function App() {
       }
     }
     else if (wallet === "NEAR") {
-      near = await NEARconnect(config);
-      window.NEARwallet = new WalletConnection(near, "dag_crypto_bridge");
+      window.near = await NEARconnect(config);
+      window.NEARwallet = new WalletConnection(window.near, "dag_crypto_bridge");
       if (!window.NEARwallet.isSignedIn()) {
         window.NEARwallet.requestSignIn();
       }
       else {
         setBuyerAddress(window.NEARwallet.getAccountId());
+
+        let senderNEARAccount = await window.near.account(window.NEARwallet.getAccountId());
+        window.senderNEARAccount = senderNEARAccount;
+        console.log(window.senderNEARAccount);
       }
     }
   }
 
-  const payBill = () => {
+  const payBill = async () => {
     if (wallet === "MetaMask") {
       EthereumWeb3.eth.getTransactionCount(buyerAddress).then(async (txCount) => {
 
         let transaction = {
           nonce: txCount,
           from: buyerAddress,
-          gasPrice: EthereumWeb3.utils.toHex(10e9),
+          gasPrice: EthereumWeb3.utils.toHex(1e9),
           gas: EthereumWeb3.utils.toHex(25000),
           to: queries.sellerAddress,
           value: EthereumWeb3.utils.toHex(EthereumWeb3.utils.toWei(amount.toString()))
         }
 
         let signed = await EthereumWeb3.eth.accounts.signTransaction(transaction, privateKey) as any;
-        EthereumWeb3.eth.sendSignedTransaction(signed.rawTransaction).on('receipt', (result) => {
-          setTransactionHash(result.transactionHash);
-        });
+        axios.get(balancer.pick() + '/signedTransactions/save/' + signed.rawTransaction).then(async (result) => {
+          console.log(result);
+        }).catch(async (err) => {
+          console.log(err);
+        })
       })
 
     }
@@ -133,7 +146,9 @@ function App() {
         alert("Please make sure you have connected your wallet!");
       }
       else {
-        window.NEARwallet.account().sendMoney(sellerAddress, Web3.utils.toBN(NEARutils.format.parseNearAmount(amount.toString())!.toString()));
+        console.log(window.senderNEARAccount);
+        const result = await window.senderNEARAccount.sendMoney(sellerAddress, NEARutils.format.parseNearAmount(amount.toString()));
+        console.log(result);
       }
 
     }
@@ -149,6 +164,7 @@ function App() {
       }} value={wallet}>
         <option value="MetaMask">MetaMask</option>
         <option value="Binance">Binance</option>
+        {/* <option value="Coinbase">Coinbase</option> */}
         <option value="NEAR">NEAR</option>
       </select>
       <button onClick={connectWallet}>Connect wallet</button><br />
@@ -163,11 +179,11 @@ function App() {
             }} />
           </p>
       }
-      {wallet === 'Binance'
+      {/* {wallet === 'Binance'
         ?
         <a href='https://binance-wallet.gitbook.io/binance-chain-wallet/bew-guides/beginers-guide/acc/backup-wallet#backup-private-key'>Check here if you don't know how to get private key of address.</a>
         : null
-      }
+      } */}
       {wallet === 'MetaMask'
         ?
         <a href='https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-Export-an-Account-Private-Key'>Check here if you don't know how to get private key of address.</a>
@@ -196,7 +212,11 @@ function App() {
           : null
         }
       </select><br />
-      <button onClick={()=> {payBill()}}>Pay The Seller Now!</button>
+      {wallet === 'Coinbase'
+        ? <a href={onRampURL} target="_blank" rel="noreferrer">Coinbase Pay</a>
+        : <button onClick={() => { payBill() }}>Pay The Seller Now!</button>
+      }
+
       <p>Or scan QR code</p>
       <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + queries.sellerAddress + '/' + amount} />
 
