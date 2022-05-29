@@ -52,14 +52,14 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
 
                                 } else if (result.length) {
 
-                                    collection.updateOne({ assetIdQuote: element.asset_id_quote }, { $set: { lastUpdatedTime: element.time, rate: element.rate } }, function (updateCollectionErr, numUpdated) {
-                                        if (updateCollectionErr) {
-                                            console.log(`Unable to update document to the collection "${collectionName}". Error: ${updateCollectionErr}`);
-                                        } else if (numUpdated) {
-                                            console.log('Updated Successfully %d document(s).', numUpdated);
+                                    collection.updateOne({ assetIdQuote: element.asset_id_quote }, { $set: { lastUpdatedTime: element.time, rate: element.rate } }).then((obj) => {
+                                        if (obj) {
+                                            console.log('Updated - ', obj);
                                         } else {
                                             console.log(`No document found with defined "${element.asset_id_quote}" criteria!`);
                                         }
+                                    }).catch((e) => {
+                                        console.log(`Unable to update document to the collection "${collectionName}". Error: ${e}`);
                                     });
 
                                 } else {
@@ -142,10 +142,10 @@ const sendBatchTransaction = cron.schedule("* */3 * * *", async () => {
                 }
 
             });
-            try{
+            try {
                 batch.execute();
             }
-            catch(e){
+            catch (e) {
                 console.log();
             }
             // client.close();
