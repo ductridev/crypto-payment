@@ -28,7 +28,7 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
         response.on('end', function () {
             try {
                 chunks = JSON.parse(Buffer.concat(chunks).toString());
-                const mongoClient = new MongoClient(`mongodb+srv://${username}:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
+                const mongoClient = new MongoClient(`mongodb+srv://admin:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
                     {
                         useNewUrlParser: true,
                         useUnifiedTopology: true
@@ -42,9 +42,9 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
                         const db = client.db(dbName);
                         var collection = db.collection(collectionName);
                         chunks.rates.forEach((element) => {
-                            let input = { lastUpdatedTime: chunks.rates.time, assetIdQuote: chunks.rates.asset_id_quote, rate: chunks.rates.rate, assetIdBase: 'USD' };
+                            let input = { lastUpdatedTime: element.time, assetIdQuote: element.asset_id_quote, rate: element.rate, assetIdBase: 'USD' };
 
-                            collection.find({ assetIdQuote: chunks.rates.asset_id_quote }).toArray(function (queryCollectionErr, result) {
+                            collection.find({ assetIdQuote: element.asset_id_quote }).toArray(function (queryCollectionErr, result) {
 
                                 if (queryCollectionErr) {
 
@@ -52,13 +52,13 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
 
                                 } else if (result.length) {
 
-                                    collection.updateOne({ assetIdQuote: chunks.rates.asset_id_quote }, { $set: { lastUpdatedTime: chunks.rates.time, rate: chunks.rates.rate } }, function (updateCollectionErr, numUpdated) {
+                                    collection.updateOne({ assetIdQuote: element.asset_id_quote }, { $set: { lastUpdatedTime: element.time, rate: element.rate } }, function (updateCollectionErr, numUpdated) {
                                         if (updateCollectionErr) {
                                             console.log(`Unable to update document to the collection "${collectionName}". Error: ${updateCollectionErr}`);
                                         } else if (numUpdated) {
                                             console.log('Updated Successfully %d document(s).', numUpdated);
                                         } else {
-                                            console.log(`No document found with defined "${chunks.rates.asset_id_quote}" criteria!`);
+                                            console.log(`No document found with defined "${element.asset_id_quote}" criteria!`);
                                         }
                                     });
 
@@ -77,7 +77,7 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
                             });
                         });
 
-                        client.close();
+                        // client.close();
                     }
                 });
             } catch (apiResponeErr) {
@@ -105,7 +105,7 @@ const sendBatchTransaction = cron.schedule("* */3 * * *", async () => {
     const collectionName = "Signed Transactions";
     const collectionName1 = "Receipts";
 
-    const mongoClient = new MongoClient(`mongodb+srv://${username}:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
+    const mongoClient = new MongoClient(`mongodb+srv://admin:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
         {
             useNewUrlParser: true,
             useUnifiedTopology: true
@@ -142,8 +142,13 @@ const sendBatchTransaction = cron.schedule("* */3 * * *", async () => {
                 }
 
             });
-            batch.execute();
-            client.close();
+            try{
+                batch.execute();
+            }
+            catch(e){
+                console.log();
+            }
+            // client.close();
         }
     });
 })
