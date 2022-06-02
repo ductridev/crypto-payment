@@ -77,7 +77,7 @@ const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
                             });
                         });
 
-                        // client.close();
+                        client.close();
                     }
                 });
             } catch (apiResponeErr) {
@@ -145,7 +145,7 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
             catch (e) {
                 // console.log();
             }
-            // client.close();
+            client.close();
         }
     });
 }, {
