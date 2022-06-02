@@ -136,24 +136,24 @@ function App() {
       }
       else {
         const txHash = await account
-          .send("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", 0.01, "BTC")
+          .send(sellerAddress, 0.01, "BTC")
           .on("transactionHash", console.log)
-          // > "3387418aaddb4927209c5032f515aa442a6587d6e54677f08a03b8fa7789e688"
           .on("confirmation", console.log);
       }
-      BinanceWeb3.eth.getTransactionCount(buyerAddress).then((txCount) => {
+      
+      // BinanceWeb3.eth.getTransactionCount(buyerAddress).then((txCount) => {
 
-        BinanceWeb3.eth.signTransaction({
-          nonce: txCount,
-          from: buyerAddress,
-          gasPrice: BinanceWeb3.utils.toHex(10e9),
-          gas: BinanceWeb3.utils.toHex(25000),
-          to: queries.sellerAddress,
-          value: BinanceWeb3.utils.toHex(BinanceWeb3.utils.toWei(amount.toString()))
-        }).then((result) => {
-          console.log(result)
-        });
-      })
+      //   BinanceWeb3.eth.signTransaction({
+      //     nonce: txCount,
+      //     from: buyerAddress,
+      //     gasPrice: BinanceWeb3.utils.toHex(10e9),
+      //     gas: BinanceWeb3.utils.toHex(25000),
+      //     to: queries.sellerAddress,
+      //     value: BinanceWeb3.utils.toHex(BinanceWeb3.utils.toWei(amount.toString()))
+      //   }).then((result) => {
+      //     console.log(result)
+      //   });
+      // })
 
     }
     else if (wallet === "NEAR") {
