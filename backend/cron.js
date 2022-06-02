@@ -28,6 +28,7 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
         response.on('end', function () {
             try {
                 chunks = JSON.parse(Buffer.concat(chunks).toString());
+                console.log(chunks);
                 const mongoClient = new MongoClient(`mongodb+srv://admin:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
                     {
                         useNewUrlParser: true,
@@ -87,9 +88,6 @@ const updateTokenPriceTask = cron.schedule("* */15 * * *", async () => {
     });
 
     request.end();
-}, {
-    scheduled: true,
-    timezone: "Asia/Ho_Chi_Minh"
 });
 
 updateTokenPriceTask.start();
@@ -130,7 +128,7 @@ const sendBatchTransaction = cron.schedule("* */3 * * *", async () => {
 
                     batch.add(
                         EthereumWeb3.eth.sendSignedTransaction(result.rawTransaction).on('receipt', (_result) => {
-                            collection1.insertOne({ receipt: _result.transactionHash }, (insertCollectionErr, __result) => {
+                            collection1.insertOne({ receipt: _result.transactionHash, transaction_id: result._id }, (insertCollectionErr, __result) => {
                                 if (insertCollectionErr) {
                                     console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
                                 } else {
@@ -146,7 +144,7 @@ const sendBatchTransaction = cron.schedule("* */3 * * *", async () => {
                 batch.execute();
             }
             catch (e) {
-                console.log();
+                // console.log();
             }
             // client.close();
         }

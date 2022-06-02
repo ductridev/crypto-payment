@@ -67,6 +67,45 @@ else {
         response.send('Silence is golden');
     })
 
+    app.get('/signedTransactions/getHash/:transaction_id', function (request, response) {
+        const username = process.env.USERNAME;
+        const password = process.env.PASSWORD;
+        const cluster = process.env.CLUSTER;
+        const dbName = "transactions";
+        const collectionName = "Receipts";
+
+        const mongoClient = new MongoClient(`mongodb+srv://${username}:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
+            {
+                useNewUrlParser: true,
+                useUnifiedTopology: true
+            }
+        );
+        mongoClient.connect(function (mongoClientErr, client) {
+            if (mongoClientErr) {
+                console.log('Unable to connect to the MongoDB server. Error:', mongoClientErr);
+            }
+            else {
+                const db = client.db(dbName);
+                var collection = db.collection(collectionName);
+
+                let input = { transaction_id: request.params.transaction_id };
+
+                collection.findOne(input).toArray(function (queryCollectionErr, result) {
+                    if (queryCollectionErr) {
+
+                        console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+
+                    } else if (result.length) {
+
+                        response({transactionHash: result.receipt});
+                        
+                    }
+                })
+
+                client.close();
+            }
+        });
+    })
     app.get('/signedTransactions/save/:rawTransaction', function (request, response) {
         const username = process.env.USERNAME;
         const password = process.env.PASSWORD;
@@ -93,8 +132,10 @@ else {
                 collection.insertOne(input, (insertCollectionErr, result) => {
                     if (insertCollectionErr) {
                         console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
+                        response.send({ error: 'Error happened. Please contect support or try later.' })
                     } else {
                         console.log(`Inserted ${result.length} documents into the "${collectionName}" collection. The documents inserted with "_id" are: ${result.insertedId}`);
+                        response.send({ transaction_id: result.insertedId })
                     }
                 });
 

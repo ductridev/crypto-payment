@@ -5,11 +5,8 @@ import { P2cBalancer } from 'load-balancers';
 import { getQueryParams } from './utils/functions';
 import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils } from "near-api-js";
 import Web3 from 'web3';
-import { generateOnRampURL } from '@coinbase/cbpay-js';
+import CryptoAccount from "send-crypto";
 import axios from 'axios';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const proxies = [
   'http://localhost:5000',
@@ -34,7 +31,7 @@ function App() {
   const [transactionHash, setTransactionHash] = useState("");
 
   const BinanceWeb3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
-  const EthereumWeb3 = new Web3(process.env.INFURA_API || '');
+  const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
 
   const config = {
     networkId: "testnet",
@@ -52,13 +49,6 @@ function App() {
     setAmount(queries.amount);
     setSellerAddress(queries.sellerAddress);
   }, []);
-
-  const onRampURL = generateOnRampURL({
-    appId: "1dbd2a0b94",
-    destinationWallets: [
-      { address: "0x123456", assets: ['ETH', 'BTC', 'SOL', 'AVAX', 'DASH', 'ATOM', 'DOGE', 'ETC', 'LTC', 'DOT', 'ZEC', 'BCH', 'ALGO'], }
-    ]
-  });
 
   const connectWallet = async () => {
     if (wallet === "MetaMask") {
@@ -120,7 +110,18 @@ function App() {
 
         let signed = await EthereumWeb3.eth.accounts.signTransaction(transaction, privateKey) as any;
         axios.get(balancer.pick() + '/signedTransactions/save/' + signed.rawTransaction).then(async (result) => {
-          console.log(result);
+          if(result.data.transaction_id){
+            let transaction_id = result.data.ransaction_id;
+            setInterval(()=>{
+              axios.get(balancer.pick() + '/signedTransactions/getHash/' + transaction_id).then(async (result) => {
+                setTransactionHash(result.data.transactionHash);
+              })
+            }, 1000);
+          }
+          else if(result.data.error){
+            alert(result.data.error);
+          }
+
         }).catch(async (err) => {
           console.log(err);
         })
@@ -128,6 +129,18 @@ function App() {
 
     }
     else if (wallet === "Binance") {
+      const account = new CryptoAccount(privateKey);
+      const accountAddress = await account.address("BTC");
+      if (accountAddress !== buyerAddress) {
+        alert('Invalid Private Key for Address : ' + buyerAddress + '. Please check it and try again!');
+      }
+      else {
+        const txHash = await account
+          .send("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", 0.01, "BTC")
+          .on("transactionHash", console.log)
+          // > "3387418aaddb4927209c5032f515aa442a6587d6e54677f08a03b8fa7789e688"
+          .on("confirmation", console.log);
+      }
       BinanceWeb3.eth.getTransactionCount(buyerAddress).then((txCount) => {
 
         BinanceWeb3.eth.signTransaction({
@@ -158,76 +171,81 @@ function App() {
   }
 
   return (
-    <div className="App">
-      {/* <p>Make a payment to the seller</p>
-      <p>Seller wallet address: {queries.sellerAddress ? queries.sellerAddress : ''}</p> */}
-      <label htmlFor="walletSelection">Select a wallet to connect so we can be sure that you are the owner of the wallet address. Please make sure you have installed wallet!</label><br />
-      <select id="walletSelection" onChange={(event) => {
-        setWallet(event.target.value);
-      }} value={wallet}>
-        <option value="MetaMask">MetaMask</option>
-        <option value="Binance">Binance</option>
-        {/* <option value="Coinbase">Coinbase</option> */}
-        <option value="NEAR">NEAR</option>
-      </select>
-      <button onClick={connectWallet}>Connect wallet</button><br />
-      <p>Buyer wallet address: {buyerAddress}</p><br />
-      {
-        wallet === 'NEAR'
-          ? null
-          :
-          <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
-            <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
-              setPrivateKey(e.target.value);
-            }} />
-          </p>
-      }
-      {/* {wallet === 'Binance'
-        ?
-        <a href='https://binance-wallet.gitbook.io/binance-chain-wallet/bew-guides/beginers-guide/acc/backup-wallet#backup-private-key'>Check here if you don't know how to get private key of address.</a>
-        : null
-      } */}
-      {wallet === 'MetaMask'
-        ?
-        <a href='https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-Export-an-Account-Private-Key'>Check here if you don't know how to get private key of address.</a>
-        : null
-      }
 
-      <p>Billing amount : {queries.amount} {queries.currency}</p>
-      <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
-      {/* Please make sure you have sufficent funds! */}
-      <select id='tokenSelection'>
-        {wallet === 'Binance'
-          ? <option value="Bitcoin">Bitcoin (BTC)</option>
-          : null
-        }
-        {wallet === 'MetaMask'
+    <div>
+      <div>
+        {typeof queries.sellerAddress === 'undefined' || typeof queries.amount === 'undefined' || typeof queries.currency === 'undefined'
           ?
-          <>
-            <option value="Ethereum">Ethereum (ETH)</option>
-            <option value="USDT">USDT</option>
-            <option value="USDC">USDC</option>
-          </>
-          : null
-        }
-        {wallet === 'NEAR'
-          ? <option value="NEAR">NEAR Protocol (NEAR)</option>
-          : null
-        }
-      </select><br />
-      {wallet === 'Coinbase'
-        ? <a href={onRampURL} target="_blank" rel="noreferrer">Coinbase Pay</a>
-        : <button onClick={() => { payBill() }}>Pay The Seller Now!</button>
-      }
+          <p>403 Forbidden</p>
+          :
+          <div className="App">
+            <label htmlFor="walletSelection">Select a wallet to connect so we can be sure that you are the owner of the wallet address. Please make sure you have installed wallet!</label><br />
+            <select id="walletSelection" onChange={(event) => {
+              setWallet(event.target.value);
+            }} value={wallet}>
+              <option value="MetaMask">MetaMask</option>
+              <option value="Binance">Binance</option>
+              {/* <option value="Coinbase">Coinbase</option> */}
+              <option value="NEAR">NEAR</option>
+            </select>
+            <button onClick={connectWallet}>Connect wallet</button><br />
+            <p>Buyer wallet address: {buyerAddress}</p><br />
+            {
+              wallet === 'NEAR'
+                ? null
+                :
+                <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
+                  <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
+                    setPrivateKey(e.target.value);
+                  }} />
+                </p>
+            }
+            {wallet === 'Binance'
+              ?
+              <a href='https://binance-wallet.gitbook.io/binance-chain-wallet/bew-guides/beginers-guide/acc/backup-wallet#backup-private-key'>Check here if you don't know how to get private key of address.</a>
+              : null
+            }
+            {
+              wallet === 'MetaMask'
+                ?
+                <a href='https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-Export-an-Account-Private-Key'>Check here if you don't know how to get private key of address.</a>
+                : null
+            }
 
-      <p>Or scan QR code</p>
-      <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + queries.sellerAddress + '/' + amount} />
+            <p>Billing amount : {queries.amount} {queries.currency}</p>
+            <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
+            {/* Please make sure you have sufficent funds! */}
+            <select id='tokenSelection'>
+              {wallet === 'Binance'
+                ? <option value="Bitcoin">Bitcoin (BTC)</option>
+                : null
+              }
+              {wallet === 'MetaMask'
+                ?
+                <>
+                  <option value="Ethereum">Ethereum (ETH)</option>
+                  <option value="USDT">USDT</option>
+                  <option value="USDC">USDC</option>
+                </>
+                : null
+              }
+              {wallet === 'NEAR'
+                ? <option value="NEAR">NEAR Protocol (NEAR)</option>
+                : null
+              }
+            </select><br />
 
-      {
-        transactionHash !== ""
-          ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
-          : null
-      }
+            <p>Or scan QR code</p>
+            <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + queries.sellerAddress + '/' + amount} />
+
+            {
+              transactionHash !== ""
+                ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
+                : null
+            }
+          </div >
+        }
+      </div >
     </div >
   );
 }
