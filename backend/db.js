@@ -2,7 +2,7 @@ const { MongoClient } = require('mongodb');
 const dotenv = require('dotenv');
 dotenv.config();
 
-var _client;
+let _client;
 
 module.exports = {
     dbConn: async function (callback) {
@@ -17,7 +17,7 @@ module.exports = {
         );
         mongoClient.connect(function(err, client){
             _client = client;
-            return callback( err );
+            return callback( err, client );
         });
     },
     getDb: function () {

@@ -53,7 +53,6 @@ function App() {
 
   Modal.setAppElement('#root');
 
-  const BinanceWeb3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
   const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
 
   const config = {

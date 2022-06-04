@@ -1,7 +1,7 @@
 var cron = require('node-cron');
 const https = require('https');
 const Web3 = require('web3');
-const mongoDB = require('./db');
+var mongoDB = require('./db');
 
 const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
     const options = {
@@ -115,6 +115,8 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
 }, {
     scheduled: false,
 })
+
+console.log('Cron started');
 
 updateTokenPriceTask.start();
 sendBatchTransaction.start();

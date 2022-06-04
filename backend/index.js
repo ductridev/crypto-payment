@@ -13,17 +13,18 @@ const timeout = require('connect-timeout');
 var Client = require('coinbase').Client;
 const { default: axios } = require('axios');
 const { MongoClient } = require('mongodb');
-const mongoDB = require('./db');
+var mongoDB = require('./db');
 
 dotenv.config();
-
-mongoDB.dbConn(function (err, client) {
-    if (err) console.log(err);
-});
 
 if (cluster.isMaster) {
     console.log(`Number of CPUs is ${totalCPUs}`);
     console.log(`Master ${process.pid} is running`);
+
+    mongoDB.dbConn(function (err, client) {
+        if (err) console.log(err);
+        else require('./cron');
+    });
 
     // Fork workers.
     for (let i = 0; i < totalCPUs; i++) {
@@ -194,8 +195,6 @@ else {
             'strictSSL': false
         });
 
-        var address = null;
-
         client.getAccount('primary', function (err, account) {
             if (err) {
                 console.log(err);
@@ -220,24 +219,16 @@ else {
 
     // Require the Routes API  
     // Create a Server and run it on the port 5000, 5001, 5002, 5003
-    const server_1 = http.createServer(app).listen(process.env.PORT_BACKEND1 || 5000, function () {
-        let host = server_1.address().address
-        let port = server_1.address().port
+    http.createServer(app).listen(process.env.PORT_BACKEND1 || 5000, function () {
         // Starting the Server at the port 5000
     })
-    const server_2 = http.createServer(app).listen(process.env.PORT_BACKEND2 || 5001, function () {
-        let host = server_2.address().address
-        let port = server_2.address().port
+    http.createServer(app).listen(process.env.PORT_BACKEND2 || 5001, function () {
         // Starting the Server at the port 5001
     })
-    const server_3 = http.createServer(app).listen(process.env.PORT_BACKEND3 || 5002, function () {
-        let host = server_3.address().address
-        let port = server_3.address().port
+    http.createServer(app).listen(process.env.PORT_BACKEND3 || 5002, function () {
         // Starting the Server at the port 5002
     })
-    const server_4 = http.createServer(app).listen(process.env.PORT_BACKEND4 || 5003, function () {
-        let host = server_4.address().address
-        let port = server_4.address().port
+    http.createServer(app).listen(process.env.PORT_BACKEND4 || 5003, function () {
         // Starting the Server at the port 5003
     })
 }
