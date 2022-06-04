@@ -13,8 +13,13 @@ const timeout = require('connect-timeout');
 var Client = require('coinbase').Client;
 const { default: axios } = require('axios');
 const { MongoClient } = require('mongodb');
+const mongoDB = require('./db');
 
 dotenv.config();
+
+mongoDB.dbConn(function (err, client) {
+    if (err) console.log(err);
+});
 
 if (cluster.isMaster) {
     console.log(`Number of CPUs is ${totalCPUs}`);
@@ -97,8 +102,8 @@ else {
 
                     } else if (result.length) {
 
-                        response({transactionHash: result.receipt});
-                        
+                        response({ transactionHash: result.receipt });
+
                     }
                 })
 
