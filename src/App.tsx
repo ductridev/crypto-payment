@@ -36,6 +36,8 @@ const modalStyle = {
 };
 
 function App() {
+  let subtitle: any;
+  const [modalIsOpen, setIsOpen] = React.useState(false);
   const [wallet, setWallet] = useState("MetaMask");
   const [buyerAddress, setBuyerAddress] = useState("");
   const [sellerAddress, setSellerAddress] = useState("");
@@ -44,11 +46,12 @@ function App() {
   const [transactionHash, setTransactionHash] = useState("");
   const [os, setOs] = useState("");
   const [token, setToken] = useState("");
-  const [modalIsOpen, setModalIsOpen] = useState(false);
 
   DeviceInfo.getBaseOs().then((baseOs) => {
     setOs(baseOs);
   });
+
+  Modal.setAppElement('#root');
 
   const BinanceWeb3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
   const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
@@ -79,24 +82,6 @@ function App() {
       }
       else {
         alert("Please install MetaMask Wallet");
-      }
-    }
-    else if (wallet === "Binance") {
-      if (typeof window.BinanceChain !== 'undefined') {
-        console.log('Binance Wallet is installed!');
-        window.BinanceChain
-          .request({
-            method: 'eth_accounts',
-          })
-          .then((result: any) => {
-            setBuyerAddress(result[0]);
-          })
-          .catch((error: any) => {
-            // If the request fails, the Promise will reject with an error.
-          });
-      }
-      else {
-        alert("Please install Binance Wallet");
       }
     }
     else if (wallet === "NEAR") {
@@ -162,6 +147,19 @@ function App() {
     }
   }
 
+  const openModal = () => {
+    setIsOpen(true);
+  }
+
+  const afterOpenModal = () => {
+    // references are now sync'd and can be accessed.
+    subtitle.style.color = '#f00';
+  }
+
+  const closeModal = () => {
+    setIsOpen(false);
+  }
+
   return (
     <div>
       <div>
@@ -188,15 +186,6 @@ function App() {
             }
             {
               wallet === 'MetaMask'
-                ? <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
-                  <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
-                    setPrivateKey(e.target.value);
-                  }} />
-                </p>
-                : null
-            }
-            {
-              token !== 'BTC'
                 ? <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
                   <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
                     setPrivateKey(e.target.value);
@@ -238,10 +227,25 @@ function App() {
                 : null
               }
             </select><br />
-            {wallet === 'Bitcoin'
+            {token === 'BTC'
               ?
               <QRURI sellerAddress={sellerAddress} amount={amount.toString()} message={'Pay for ' + sellerAddress + ' with amount = ' + amount.toString() + ' BTC'} label={'BTC'} />
               :
+              null
+            }
+            {wallet === 'Bitcoin'
+
+              ? <>
+                {token === 'BCH'
+                  ?
+                  <button onClick={openModal}>Open Modal</button>
+                  : null
+                }
+              </>
+              : null
+            }
+            {wallet === 'MetaMask'
+              ?
               <>
                 <button onClick={payBill}>Process payment</button>
 
@@ -254,8 +258,21 @@ function App() {
                     : null
                 }
               </>
+              : null
             }
-            <ConfirmModal isOpen={modalIsOpen} privateKey={privateKey}/>
+            <Modal
+              isOpen={modalIsOpen}
+              onAfterOpen={afterOpenModal}
+              onRequestClose={closeModal}
+              style={modalStyle}
+              contentLabel="Payment Confirmation Modal"
+            >
+              <h2 ref={(_subtitle) => (subtitle = _subtitle)}>Payment Confirmation</h2>
+              <button onClick={closeModal}>Close</button>
+              <div>After you confirm, we can't refund your payment. Are you sure to process the payment ?</div>
+              <div>If you confirm. Please enter private key of your address so we can make sure that you confirm with payment.</div>
+              <input placeholder='Private Key' onChange={(e) => { setPrivateKey(e.target.value) }}></input>
+            </Modal>
           </div >
         }
       </div >
@@ -306,38 +323,6 @@ function QRURI(props: {
         : null
       }
     </div>
-  )
-}
-
-function ConfirmModal(props: {
-  isOpen: boolean;
-  privateKey: string;
-}) {
-  let subtitle: any;
-  const [modalIsOpen, setIsOpen] = React.useState(props.isOpen);
-
-  function afterOpenModal() {
-    // references are now sync'd and can be accessed.
-    subtitle.style.color = '#f00';
-  }
-
-  function closeModal() {
-    setIsOpen(false);
-  }
-
-
-  return (
-    <Modal
-      isOpen={modalIsOpen}
-      onAfterOpen={afterOpenModal}
-      onRequestClose={closeModal}
-      style={modalStyle}
-      contentLabel="Payment Confirmation Modal"
-    >
-      <h2 ref={(_subtitle) => (subtitle = _subtitle)}>Payment Confirmation</h2>
-      <button onClick={closeModal}>Close</button>
-      <div>After you confirm, we can't refund your payment. Are you sure to process the payment ?</div>
-    </Modal>
   )
 }
 
