@@ -20,14 +20,18 @@ const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
     const dbName = "TokenPrices";
     const collectionName = "Exchange Rates";
 
+    var _client;
+
     var request = https.request(options, function (response) {
         var chunks = [];
+        console.log(response);
         response.on("data", function (chunk) {
             chunks.push(chunk);
         });
         response.on('end', function () {
             try {
                 chunks = JSON.parse(Buffer.concat(chunks).toString());
+                console.log(chunks);
                 const mongoClient = new MongoClient(`mongodb+srv://admin:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
                     {
                         useNewUrlParser: true,
@@ -39,6 +43,7 @@ const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
                         console.log('Unable to connect to the MongoDB server. Error:', mongoClientErr);
                     }
                     else {
+                        _client = client;
                         const db = client.db(dbName);
                         var collection = db.collection(collectionName);
                         chunks.rates.forEach((element) => {
@@ -77,7 +82,6 @@ const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
                             });
                         });
 
-                        client.close();
                     }
                 });
             } catch (apiResponeErr) {
@@ -87,6 +91,7 @@ const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
     });
 
     request.end();
+    _client.close();
 }, {
     scheduled: false,
 });
@@ -102,6 +107,8 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
     const collectionName = "Signed Transactions";
     const collectionName1 = "Receipts";
 
+    var _client;
+
     const mongoClient = new MongoClient(`mongodb+srv://admin:${password}@${cluster}.mongodb.net/?retryWrites=true&w=majority`,
         {
             useNewUrlParser: true,
@@ -113,6 +120,7 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
             console.log('Unable to connect to the MongoDB server. Error:', mongoClientErr);
         }
         else {
+            _client = client;
             const db = client.db(dbName);
             var collection = db.collection(collectionName);
             var collection1 = db.collection(collectionName1);
@@ -145,9 +153,10 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
             catch (e) {
                 // console.log();
             }
-            client.close();
+            // client.close();
         }
     });
+    _client.close();
 }, {
     scheduled: false,
 })

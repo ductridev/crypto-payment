@@ -5,8 +5,10 @@ import { P2cBalancer } from 'load-balancers';
 import { getQueryParams } from './utils/functions';
 import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils } from "near-api-js";
 import Web3 from 'web3';
-import CryptoAccount from "send-crypto";
 import axios from 'axios';
+import DeviceInfo from 'react-native-device-info';
+import CryptoAccount from 'send-crypto';
+import Modal from 'react-modal';
 
 const proxies = [
   'http://localhost:5000',
@@ -22,6 +24,17 @@ const balancer = new P2cBalancer(proxies.length);
 
 const keyStore = new keyStores.BrowserLocalStorageKeyStore();
 
+const modalStyle = {
+  content: {
+    top: '50%',
+    left: '50%',
+    right: 'auto',
+    bottom: 'auto',
+    marginRight: '-50%',
+    transform: 'translate(-50%, -50%)',
+  },
+};
+
 function App() {
   const [wallet, setWallet] = useState("MetaMask");
   const [buyerAddress, setBuyerAddress] = useState("");
@@ -29,6 +42,13 @@ function App() {
   const [amount, setAmount] = useState(0);
   const [privateKey, setPrivateKey] = useState("");
   const [transactionHash, setTransactionHash] = useState("");
+  const [os, setOs] = useState("");
+  const [token, setToken] = useState("");
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+
+  DeviceInfo.getBaseOs().then((baseOs) => {
+    setOs(baseOs);
+  });
 
   const BinanceWeb3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
   const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
@@ -110,15 +130,15 @@ function App() {
 
         let signed = await EthereumWeb3.eth.accounts.signTransaction(transaction, privateKey) as any;
         axios.get(balancer.pick() + '/signedTransactions/save/' + signed.rawTransaction).then(async (result) => {
-          if(result.data.transaction_id){
+          if (result.data.transaction_id) {
             let transaction_id = result.data.ransaction_id;
-            setInterval(()=>{
+            setInterval(() => {
               axios.get(balancer.pick() + '/signedTransactions/getHash/' + transaction_id).then(async (result) => {
                 setTransactionHash(result.data.transactionHash);
               })
             }, 1000);
           }
-          else if(result.data.error){
+          else if (result.data.error) {
             alert(result.data.error);
           }
 
@@ -126,34 +146,6 @@ function App() {
           console.log(err);
         })
       })
-
-    }
-    else if (wallet === "Binance") {
-      const account = new CryptoAccount(privateKey);
-      const accountAddress = await account.address("BTC");
-      if (accountAddress !== buyerAddress) {
-        alert('Invalid Private Key for Address : ' + buyerAddress + '. Please check it and try again!');
-      }
-      else {
-        const txHash = await account
-          .send(sellerAddress, 0.01, "BTC")
-          .on("transactionHash", console.log)
-          .on("confirmation", console.log);
-      }
-      
-      // BinanceWeb3.eth.getTransactionCount(buyerAddress).then((txCount) => {
-
-      //   BinanceWeb3.eth.signTransaction({
-      //     nonce: txCount,
-      //     from: buyerAddress,
-      //     gasPrice: BinanceWeb3.utils.toHex(10e9),
-      //     gas: BinanceWeb3.utils.toHex(25000),
-      //     to: queries.sellerAddress,
-      //     value: BinanceWeb3.utils.toHex(BinanceWeb3.utils.toWei(amount.toString()))
-      //   }).then((result) => {
-      //     console.log(result)
-      //   });
-      // })
 
     }
     else if (wallet === "NEAR") {
@@ -171,7 +163,6 @@ function App() {
   }
 
   return (
-
     <div>
       <div>
         {typeof queries.sellerAddress === 'undefined' || typeof queries.amount === 'undefined' || typeof queries.currency === 'undefined'
@@ -184,26 +175,34 @@ function App() {
               setWallet(event.target.value);
             }} value={wallet}>
               <option value="MetaMask">MetaMask</option>
-              <option value="Binance">Binance</option>
-              {/* <option value="Coinbase">Coinbase</option> */}
+              <option value="Bitcoin">Bitcoin</option>
               <option value="NEAR">NEAR</option>
             </select>
-            <button onClick={connectWallet}>Connect wallet</button><br />
-            <p>Buyer wallet address: {buyerAddress}</p><br />
+            {wallet === 'Bitcoin'
+              ? null
+              :
+              <>
+                <button onClick={connectWallet}>Connect wallet</button><br />
+                <p>Buyer wallet address: {buyerAddress}</p><br />
+              </>
+            }
             {
-              wallet === 'NEAR'
-                ? null
-                :
-                <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
+              wallet === 'MetaMask'
+                ? <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
                   <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
                     setPrivateKey(e.target.value);
                   }} />
                 </p>
+                : null
             }
-            {wallet === 'Binance'
-              ?
-              <a href='https://binance-wallet.gitbook.io/binance-chain-wallet/bew-guides/beginers-guide/acc/backup-wallet#backup-private-key'>Check here if you don't know how to get private key of address.</a>
-              : null
+            {
+              token !== 'BTC'
+                ? <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
+                  <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
+                    setPrivateKey(e.target.value);
+                  }} />
+                </p>
+                : null
             }
             {
               wallet === 'MetaMask'
@@ -213,17 +212,22 @@ function App() {
             }
 
             <p>Billing amount : {queries.amount} {queries.currency}</p>
+            {os
+              ? <HelpBitcoinWallet os={os} />
+              : null}
             <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
-            {/* Please make sure you have sufficent funds! */}
-            <select id='tokenSelection'>
-              {wallet === 'Binance'
-                ? <option value="Bitcoin">Bitcoin (BTC)</option>
+            <select id='tokenSelection' onChange={(e) => { setToken(e.target.value); }}>
+              {wallet === 'Bitcoin'
+                ? <>
+                  <option value="BTC">Bitcoin (BTC)</option>
+                  <option value="BCH">Bitcoin Cash (BCH)</option>
+                </>
                 : null
               }
               {wallet === 'MetaMask'
                 ?
                 <>
-                  <option value="Ethereum">Ethereum (ETH)</option>
+                  <option value="ETH">Ethereum (ETH)</option>
                   <option value="USDT">USDT</option>
                   <option value="USDC">USDC</option>
                 </>
@@ -234,20 +238,107 @@ function App() {
                 : null
               }
             </select><br />
+            {wallet === 'Bitcoin'
+              ?
+              <QRURI sellerAddress={sellerAddress} amount={amount.toString()} message={'Pay for ' + sellerAddress + ' with amount = ' + amount.toString() + ' BTC'} label={'BTC'} />
+              :
+              <>
+                <button onClick={payBill}>Process payment</button>
 
-            <p>Or scan QR code</p>
-            <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + queries.sellerAddress + '/' + amount} />
+                <p>Or scan QR code</p>
+                <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + queries.sellerAddress + '/' + amount} />
 
-            {
-              transactionHash !== ""
-                ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
-                : null
+                {
+                  transactionHash !== ""
+                    ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
+                    : null
+                }
+              </>
             }
+            <ConfirmModal isOpen={modalIsOpen} privateKey={privateKey}/>
           </div >
         }
       </div >
     </div >
   );
+}
+
+function HelpBitcoinWallet(props: {
+  os: string;
+}) {
+  return (
+    <div>
+      {
+        props.os === 'Windows'
+          ? <p>Check all Bitcoin Wallet for Windows is available at <a href='https://bitcoin.org/en/wallets/desktop/windows/?step=5&platform=windows'>here</a></p>
+          : null
+      }
+      {props.os === 'Android'
+        ? <p>Check all Bitcoin Wallet for Android is available at <a href='https://bitcoin.org/en/wallets/mobile/android?step=5&platform=android'>here</a></p>
+        : null
+      }
+      {props.os === 'iOS'
+        ? <p>Check all Bitcoin Wallet for iOS is available at <a href='https://bitcoin.org/en/wallets/mobile/ios/?step=5&platform=ios'>here</a></p>
+        : null
+      }
+    </div>
+  )
+}
+
+function QRURI(props: {
+  sellerAddress: string;
+  amount: string;
+  message: string;
+  label: string;
+}) {
+  const [showURI, setShowURI] = useState(false);
+
+  return (
+    <div>
+      <button onClick={() => { setShowURI(true); }}>Create Request URI</button>
+      {showURI === true
+        ?
+        <div>
+          <a href={'bitcoin:' + props.sellerAddress + '?amount=' + props.amount + '&message=' + props.message + '&label=' + props.label}>{'bitcoin:' + props.sellerAddress + '?amount=' + props.amount + '&message=' + props.message + '&label=' + props.label}</a><br />
+          or<br />
+          <QRCodeSVG value={'bitcoin:' + props.sellerAddress + '?amount=' + props.amount + '&message=' + props.message + '&label=' + props.label} />
+        </div>
+        : null
+      }
+    </div>
+  )
+}
+
+function ConfirmModal(props: {
+  isOpen: boolean;
+  privateKey: string;
+}) {
+  let subtitle: any;
+  const [modalIsOpen, setIsOpen] = React.useState(props.isOpen);
+
+  function afterOpenModal() {
+    // references are now sync'd and can be accessed.
+    subtitle.style.color = '#f00';
+  }
+
+  function closeModal() {
+    setIsOpen(false);
+  }
+
+
+  return (
+    <Modal
+      isOpen={modalIsOpen}
+      onAfterOpen={afterOpenModal}
+      onRequestClose={closeModal}
+      style={modalStyle}
+      contentLabel="Payment Confirmation Modal"
+    >
+      <h2 ref={(_subtitle) => (subtitle = _subtitle)}>Payment Confirmation</h2>
+      <button onClick={closeModal}>Close</button>
+      <div>After you confirm, we can't refund your payment. Are you sure to process the payment ?</div>
+    </Modal>
+  )
 }
 
 export default App;
