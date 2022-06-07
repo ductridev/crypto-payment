@@ -8,7 +8,8 @@ import Web3 from 'web3';
 import axios from 'axios';
 import DeviceInfo from 'react-native-device-info';
 import CryptoAccount from 'send-crypto';
-import Modal from 'react-modal';
+import { confirmAlert } from 'react-confirm-alert';
+import 'react-confirm-alert/src/react-confirm-alert.css';
 
 const proxies = [
   'http://localhost:5000',
@@ -24,20 +25,7 @@ const balancer = new P2cBalancer(proxies.length);
 
 const keyStore = new keyStores.BrowserLocalStorageKeyStore();
 
-const modalStyle = {
-  content: {
-    top: '50%',
-    left: '50%',
-    right: 'auto',
-    bottom: 'auto',
-    marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
-  },
-};
-
 function App() {
-  let subtitle: any;
-  const [modalIsOpen, setIsOpen] = React.useState(false);
   const [wallet, setWallet] = useState("MetaMask");
   const [buyerAddress, setBuyerAddress] = useState("");
   const [sellerAddress, setSellerAddress] = useState("");
@@ -50,8 +38,6 @@ function App() {
   DeviceInfo.getBaseOs().then((baseOs) => {
     setOs(baseOs);
   });
-
-  Modal.setAppElement('#root');
 
   const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
 
@@ -138,25 +124,44 @@ function App() {
         alert("Please make sure you have connected your wallet!");
       }
       else {
-        console.log(window.senderNEARAccount);
         const result = await window.senderNEARAccount.sendMoney(sellerAddress, NEARutils.format.parseNearAmount(amount.toString()));
         console.log(result);
       }
 
     }
+    else if (wallet === "Bitcoin") {
+      if (token === "BCH") {
+        confirmAlert({
+          customUI: ({ onClose }) => {
+            return (
+              <div className='custom-ui'>
+                <h1>Are you sure?</h1>
+                <p>You want to delete this file?</p>
+                <button onClick={onClose}>Cancel</button>
+                <button
+                  onClick={() => {
+                    handleClickProcess();
+                    onClose();
+                  }}
+                >
+                  Yes, Continue Process Payment
+                </button>
+              </div>
+            );
+          }
+        });
+      }
+    }
   }
 
-  const openModal = () => {
-    setIsOpen(true);
-  }
+  const handleClickProcess = async () => {
+    const account = new CryptoAccount(privateKey);
 
-  const afterOpenModal = () => {
-    // references are now sync'd and can be accessed.
-    subtitle.style.color = '#f00';
-  }
-
-  const closeModal = () => {
-    setIsOpen(false);
+    await account.send(
+      "bitcoincash:qp3wjpa3tjlj042z2wv7hahsldgwhwy0rq9sywjpyy",
+      0.01,
+      "BCH"
+    );
   }
 
   return (
@@ -170,6 +175,9 @@ function App() {
             <label htmlFor="walletSelection">Select a wallet to connect so we can be sure that you are the owner of the wallet address. Please make sure you have installed wallet!</label><br />
             <select id="walletSelection" onChange={(event) => {
               setWallet(event.target.value);
+              if (event.target.value === 'Bitcoin') {
+                setToken('BTC');
+              }
             }} value={wallet}>
               <option value="MetaMask">MetaMask</option>
               <option value="Bitcoin">Bitcoin</option>
@@ -232,17 +240,6 @@ function App() {
               :
               null
             }
-            {wallet === 'Bitcoin'
-
-              ? <>
-                {token === 'BCH'
-                  ?
-                  <button onClick={openModal}>Open Modal</button>
-                  : null
-                }
-              </>
-              : null
-            }
             {wallet === 'MetaMask'
               ?
               <>
@@ -259,19 +256,24 @@ function App() {
               </>
               : null
             }
-            <Modal
-              isOpen={modalIsOpen}
-              onAfterOpen={afterOpenModal}
-              onRequestClose={closeModal}
-              style={modalStyle}
-              contentLabel="Payment Confirmation Modal"
-            >
-              <h2 ref={(_subtitle) => (subtitle = _subtitle)}>Payment Confirmation</h2>
-              <button onClick={closeModal}>Close</button>
-              <div>After you confirm, we can't refund your payment. Are you sure to process the payment ?</div>
-              <div>If you confirm. Please enter private key of your address so we can make sure that you confirm with payment.</div>
-              <input placeholder='Private Key' onChange={(e) => { setPrivateKey(e.target.value) }}></input>
-            </Modal>
+            {wallet === 'Bitcoin'
+              ?
+              <>
+                {token === 'BCH'
+                  ?
+                  <button onClick={payBill}>Process payment</button>
+                  : null
+                }
+              </>
+              : null
+            }
+            {wallet === 'NEAR'
+              ?
+              <>
+                <button onClick={payBill}>Process payment</button>
+              </>
+              : null
+            }
           </div >
         }
       </div >
