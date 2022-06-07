@@ -23,6 +23,7 @@ const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
         response.on('end', function () {
             try {
                 chunks = JSON.parse(Buffer.concat(chunks).toString());
+                console.log(chunks);
                 const db = client.db(dbName);
                 var collection = db.collection(collectionName);
                 chunks.rates.forEach((element) => {
