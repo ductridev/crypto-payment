@@ -152,6 +152,7 @@ else {
         });
     })
 
+    // Temporary disabled
     // app.get('/coinbase/auth/', function (request, response) {
     //     response.redirect('https://www.coinbase.com/oauth/authorize?response_type=code&client_id=2abb855bdd5b3a649f1f54a811b53f80832d2b6f4516758014c35de4ed576090&redirect_uri=http://127.0.0.1:5000/auth/coinbase/callback&scope=wallet:accounts:read,wallet:transactions:request,wallet:transactions:read');
     // })
