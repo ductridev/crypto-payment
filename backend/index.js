@@ -23,7 +23,10 @@ if (cluster.isMaster) {
 
     mongoDB.dbConn(function (err, client) {
         if (err) console.log(err);
-        else require('./cron');
+        else { 
+            require('./cron');
+            require('./DAG/index'); // DAG is a module that runs the DAG algorithm
+        }
     });
 
     // Fork workers.
