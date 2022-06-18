@@ -25,7 +25,6 @@ if (cluster.isMaster) {
         if (err) console.log(err);
         else { 
             require('./cron');
-            require('./DAG/index'); // DAG is a module that runs the DAG algorithm
         }
     });
 
@@ -115,7 +114,7 @@ else {
             }
         });
     })
-    app.get('/signedTransactions/save/:rawTransaction', function (request, response) {
+    app.get('/signedTransactions/save/:rawTransaction/:type/:amount', function (request, response) {
         const username = process.env.USERNAME;
         const password = process.env.PASSWORD;
         const cluster = process.env.CLUSTER;
@@ -136,7 +135,7 @@ else {
                 const db = client.db(dbName);
                 var collection = db.collection(collectionName);
 
-                let input = { rawTransaction: request.params.rawTransaction };
+                let input = { rawTransaction: request.params.rawTransaction, type: request.params.type, amount: request.params.amount };
 
                 collection.insertOne(input, (insertCollectionErr, result) => {
                     if (insertCollectionErr) {
@@ -153,42 +152,42 @@ else {
         });
     })
 
-    app.get('/coinbase/auth/', function (request, response) {
-        response.redirect('https://www.coinbase.com/oauth/authorize?response_type=code&client_id=2abb855bdd5b3a649f1f54a811b53f80832d2b6f4516758014c35de4ed576090&redirect_uri=http://127.0.0.1:5000/auth/coinbase/callback&scope=wallet:accounts:read,wallet:transactions:request,wallet:transactions:read');
-    })
-    app.get('/auth/coinbase/callback', function (request, response) {
-        response.redirect(`/coinbase/transaction/request/${request.query.code}`);
-    })
-    app.get('/coinbase/transaction/request/:code', function (request, response) {
-        let data = `grant_type=authorization_code&code=${request.params.code}&client_id=2abb855bdd5b3a649f1f54a811b53f80832d2b6f4516758014c35de4ed576090&client_secret=2ce487b3d23ad69799fc8684f9d97d849a65cff085922a135675b3c1d1b72415&redirect_uri=http://127.0.0.1:5000/auth/coinbase/callback`
-        axios.post('https://api.coinbase.com/oauth/token', data).then(async (res) => {
-            let result = await axios.get('https://api.coinbase.com/v2/user', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `${res.data.token_type} ${res.data.access_token}`,
-                    'CB-VERSION': '2021-11-06',
-                }
-            })
-            console.log(result);
-            let result1 = await axios.post(`https://api.coinbase.com/v2/accounts/${result.data.data.id}/transactions/`, {
-                type: "request",
-                to: "trihdde170376@fpt.edu.vn",
-                amount: "0.001",
-                currency: "BTC",
-                description: `${result.data.data.name} requested you to send 0.001 BTC`
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `${res.data.token_type} ${res.data.access_token}`,
-                    'CB-VERSION': '2021-11-06',
-                }
-            })
-            console.log('result1' + result1);
-        }).catch((err) => {
-            console.log(err);
-        })
-        response.send('Silence is golden');
-    })
+    // app.get('/coinbase/auth/', function (request, response) {
+    //     response.redirect('https://www.coinbase.com/oauth/authorize?response_type=code&client_id=2abb855bdd5b3a649f1f54a811b53f80832d2b6f4516758014c35de4ed576090&redirect_uri=http://127.0.0.1:5000/auth/coinbase/callback&scope=wallet:accounts:read,wallet:transactions:request,wallet:transactions:read');
+    // })
+    // app.get('/auth/coinbase/callback', function (request, response) {
+    //     response.redirect(`/coinbase/transaction/request/${request.query.code}`);
+    // })
+    // app.get('/coinbase/transaction/request/:code', function (request, response) {
+    //     let data = `grant_type=authorization_code&code=${request.params.code}&client_id=2abb855bdd5b3a649f1f54a811b53f80832d2b6f4516758014c35de4ed576090&client_secret=2ce487b3d23ad69799fc8684f9d97d849a65cff085922a135675b3c1d1b72415&redirect_uri=http://127.0.0.1:5000/auth/coinbase/callback`
+    //     axios.post('https://api.coinbase.com/oauth/token', data).then(async (res) => {
+    //         let result = await axios.get('https://api.coinbase.com/v2/user', {
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 'Authorization': `${res.data.token_type} ${res.data.access_token}`,
+    //                 'CB-VERSION': '2021-11-06',
+    //             }
+    //         })
+    //         console.log(result);
+    //         let result1 = await axios.post(`https://api.coinbase.com/v2/accounts/${result.data.data.id}/transactions/`, {
+    //             type: "request",
+    //             to: "trihdde170376@fpt.edu.vn",
+    //             amount: "0.001",
+    //             currency: "BTC",
+    //             description: `${result.data.data.name} requested you to send 0.001 BTC`
+    //         }, {
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 'Authorization': `${res.data.token_type} ${res.data.access_token}`,
+    //                 'CB-VERSION': '2021-11-06',
+    //             }
+    //         })
+    //         console.log('result1' + result1);
+    //     }).catch((err) => {
+    //         console.log(err);
+    //     })
+    //     response.send('Silence is golden');
+    // })
 
     app.get('/test', function (request, response) {
         var client = new Client({

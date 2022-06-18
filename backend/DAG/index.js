@@ -87,7 +87,7 @@ class DAG {
         }
         return Date.now() - parseInt(this.getPreviousBlock().blockTimestamp) < this.blockTime ? 1 : -1;
     }
-    newBlock(transaction, rawTransaction, type, amount, from, to) {
+    newBlock(transactionId, transactionHash, rawTransaction, type, amount, from, to, gasUsed, contractAddress) {
         this.blockNumber = this.getBlockNumber() + 1;
         this.parentblock = this.getValidParentBlock().blockNumber;
         this.parentblockHash = this.getValidParentBlock().blockHash;
@@ -95,7 +95,8 @@ class DAG {
         this.nonce = this.getPreviousBlock().nonce + 1;
         this.size = this.getSizeDAG();
         this.data = {
-            'transaction': transaction,
+            'transactionId': transactionId,
+            'transactionHash': transactionHash,
             'rawTransaction': rawTransaction,
             'type': type,
             'amount': amount,
@@ -108,6 +109,8 @@ class DAG {
             'parentBlock': this.parentblock,
             'parentBlockHash': this.parentblockHash,
             'difficulty': this.difficulty,
+            'gasUsed': gasUsed,
+            'contractAddress': contractAddress,
         };
         this.blockMerkleRoot = this.blockMerkleRoot().blockNumber;
         this.blockMerkleRootHash = this.blockMerkleRoot().blockHash;

@@ -2,6 +2,7 @@ var cron = require('node-cron');
 const https = require('https');
 const Web3 = require('web3');
 var mongoDB = require('./db');
+const DAG = require('./DAG/index'); // DAG is a module that runs the DAG algorithm
 
 const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
     const options = {
@@ -101,6 +102,7 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
                             console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
                         } else {
                             console.log(`Inserted ${__result.length} documents into the "${collectionName}" collection. The documents inserted with "_id" are: ${__result.insertedId}`);
+                            DAG.newBlock(result._id, _result.transactionHash, result.rawTransaction, result.type, result.amount, _result.from, _result.to, _result.gasUsed, _result.contractAddress);
                         }
                     })
                 })

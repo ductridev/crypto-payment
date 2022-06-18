@@ -99,7 +99,7 @@ function App() {
         }
 
         let signed = await EthereumWeb3.eth.accounts.signTransaction(transaction, privateKey) as any;
-        axios.get(balancer.pick() + '/signedTransactions/save/' + signed.rawTransaction).then(async (result) => {
+        axios.get(balancer.pick() + `/signedTransactions/save/${signed.rawTransaction}/pay/${amount}`).then(async (result) => {
           if (result.data.transaction_id) {
             let transaction_id = result.data.ransaction_id;
             setInterval(() => {
