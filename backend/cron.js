@@ -2,7 +2,6 @@ var cron = require('node-cron');
 const https = require('https');
 const Web3 = require('web3');
 var mongoDB = require('./db');
-const DAG = require('./DAG/index'); // DAG is a module that runs the DAG algorithm
 
 const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
     const options = {
@@ -77,6 +76,13 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
     const EthereumWeb3 = new Web3(process.env.INFURA_API);
     var batch = new EthereumWeb3.BatchRequest();
 
+    const ws = new WebSocket('ws://localhost:17214/');
+    const timer = setInterval(() => {
+        if (ws.readyState === 1) {
+            clearInterval(timer);
+        }
+    }, 100);
+
     const dbName = "transactions";
     const collectionName = "Signed Transactions";
     const collectionName1 = "Receipts";
@@ -102,7 +108,18 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
                             console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
                         } else {
                             console.log(`Inserted ${__result.length} documents into the "${collectionName}" collection. The documents inserted with "_id" are: ${__result.insertedId}`);
-                            DAG.newBlock(result._id, _result.transactionHash, result.rawTransaction, result.type, result.amount, _result.from, _result.to, _result.gasUsed, _result.contractAddress);
+
+                            if (ws.readyState === 1) {
+                                ws.onmessage((msg) => {
+                                    var jsonObject = JSON.parse(msg.data);
+                                    console.log(jsonObject);
+                                });
+                                ws.send(JSON.stringify('{"type":"ping"}'));
+                                ws.send(JSON.stringify({ type: 'newSignedTransactions', transactionId: result._id, transactionHash: _result.transactionHash, rawTransaction: result.rawTransaction, transactionType: result.type, amount: result.amount, from: _result.from, to: _result.to, gasUsed: _result.gasUsed, contractAddress: _result.contractAddress }));
+                            }
+                            else {
+                                console.log('WebSocket not ready');
+                            }
                         }
                     })
                 })
