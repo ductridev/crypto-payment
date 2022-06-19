@@ -15,12 +15,14 @@ class DAG {
         this.parentblockHash = '';
         this.size = this.getSizeDAG();
         this.data = {};
+        this.blockLevel = 0;
         this.blockVersion = process.env.DAG_VERSION;
         this.blockVerify = false;
         this.blockMerkleRoot = '';
         this.blockMerkleRootHash = '';
         this.blockTimestamp = '';
         this.blockTimestampUnix = '';
+        this.blockTimestampRenew = '';
         this.blockTime = '10000';
         this.maxParentBlockTime = '30000';
         this.timeoutParentBlock = false;
@@ -29,12 +31,14 @@ class DAG {
     }
     initDAG() {
         this.blockMerkleRoot = 0;
+        this.blockLevel = 0;
         this.blockMerkleRootHash = SHA256(this.blockMerkleRoot + 'Block Merkle Root' + Date.now()).toString();
         this.collection.insertOne({
             blockNumber: this.blockMerkleRoot,
             blockHash: this.blockMerkleRootHash,
             blockVersion: this.blockVersion,
             blockVerify: true,
+            blockLevel: 0,
             blockMerkleRoot: this.blockMerkleRoot,
             blockMerkleRootHash: this.blockMerkleRootHash,
             blockTimestamp: new Date(Date.now()).toISOString(),
@@ -91,7 +95,13 @@ class DAG {
     getLastVerifiedBlock() {
         this.collection.find({ timeoutParentBlock: false, blockVerify: true }).toArray(function (err, docs) {
             if (!err) {
-                return docs[docs.length];
+                if (docs.length > 0) {
+                    return docs[docs.length];
+                } else {
+                    this.collection.find({ blockVerify: true }).sort({ _id: 1 }).limit(1).toArray(function (err, docs) {
+                        return [docs[0], 'APBHT']; //All parent blocks have timeout
+                    })
+                }
             }
             else {
                 console.log(err);
@@ -99,15 +109,29 @@ class DAG {
             }
         });
     }
-    getValidParentBlock(lastVerifiedBlock) {
-        var timeoutParentBlock;
-        Date.now() > parseInt(lastVerifiedBlock.blockTimestamp) + this.maxParentBlockTime ? timeoutParentBlock = true : timeoutParentBlock = false;
-        if (timeoutParentBlock === false) {
-            return lastVerifiedBlock;
-        }
-        else {
-            this.getValidParentBlock(this.getLastVerifiedBlock());
-        }
+    getValidParentBlock(lastVerifiedBlocks) {
+        lastVerifiedBlocks.forEach(lastVerifiedBlock => {
+            var timeoutParentBlock;
+            Date.now() > parseInt(lastVerifiedBlock.blockTimestampRenew) + this.maxParentBlockTime ? timeoutParentBlock = true : timeoutParentBlock = false;
+            if (timeoutParentBlock === true) {
+                this.collection.update({ blockNumber: lastVerifiedBlock.blockNumber }, { $set: { timeoutParentBlock: timeoutParentBlock } }, function (err, result) { });
+                lastVerifiedBlocks.splice(lastVerifiedBlocks.indexOf(lastVerifiedBlock), 1);
+            }
+            else if (lastVerifiedBlock[1] === 'APBHT') {
+                this.collection.update({ blockLevel: lastVerifiedBlock.blockLevel }, { $set: { blockTimestampRenew: new Date(Date.now()).toISOString() } }, function (err, result) {
+                    if (!err) {
+                        this.getValidParentBlock(this.getLastVerifiedBlock());
+                    }
+                    else {
+                        return err;
+                    }
+                });
+            }
+            else {
+                this.getValidParentBlock(this.getLastVerifiedBlock());
+            }
+        });
+        return lastVerifiedBlocks.sort();
     }
     getSizeDAG() {
         return this.collection.dataSize();
@@ -123,7 +147,7 @@ class DAG {
     }
     newBlock(transactionId, transactionHash, rawTransaction, type, amount, from, to, gasUsed, contractAddress) {
         try {
-            let parentBlockData = this.getValidParentBlock();
+            let parentBlockData = this.getValidParentBlock()[0];
             this.blockNumber = this.getBlockNumber() + 1;
             this.parentblock = parentBlockData.blockNumber;
             this.parentblockHash = parentBlockData.blockHash;
@@ -149,6 +173,7 @@ class DAG {
             };
             this.blockTimestamp = new Date(Date.now()).toISOString();
             this.blockTimestampUnix = Date.now();
+            this.blockTimestampRenew = new Date(Date.now()).toISOString();
             this.blockHash = this.calBlockHash();
 
             this.collection.insertOne({
