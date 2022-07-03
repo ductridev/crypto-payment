@@ -1,0 +1,36 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="{{#icon}}{{icon}}{{/icon}}{{^icon}}../public/favicon.ico{{/icon}}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="{{#description}}{{description}}{{/description}}{{^description}}DAG Crypto Bridge for easy payment{{/description}}" />
+    <link rel="stylesheet" href="../public/templates/admin/admin.css">
+    <title>{{#title}}{{title}}{{/title}}{{^title}}Crypto Payment{{/title}}</title>
+</head>
+
+<body>
+    <div id="root">
+        <h1>Login</h1>
+        <div>{{#error}}{{error}}{{/error}}{{^error}}{{/error}}</div>
+        <div class="container">
+            <form method="POST" action="/admin/login/submit">
+                <div class="username">
+                    <label for="username">Username</label>
+                    <input id="username" name="username"/>
+                </div>
+                <div class="password">
+                    <label for="password">Password</label>
+                    <input id="password" type="password" name="password"/>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+        </div>
+    </div>
+</body>
+<footer>
+
+</footer>
+
+</html>

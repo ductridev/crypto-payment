@@ -100,30 +100,31 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
             console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
 
         } else if (result.length) {
+            for (let i = 0; i < result.length; i++) {
+                batch.add(
+                    EthereumWeb3.eth.sendSignedTransaction(result[i].rawTransaction).on('receipt', (_result) => {
+                        collection1.insertOne({ receipt: _result.transactionHash, transaction_id: result[i]._id }, (insertCollectionErr, __result) => {
+                            if (insertCollectionErr) {
+                                console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
+                            } else {
+                                console.log(`Inserted ${__result.length} documents into the "${collectionName}" collection. The documents inserted with "_id" are: ${__result.insertedId}`);
 
-            batch.add(
-                EthereumWeb3.eth.sendSignedTransaction(result.rawTransaction).on('receipt', (_result) => {
-                    collection1.insertOne({ receipt: _result.transactionHash, transaction_id: result._id }, (insertCollectionErr, __result) => {
-                        if (insertCollectionErr) {
-                            console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
-                        } else {
-                            console.log(`Inserted ${__result.length} documents into the "${collectionName}" collection. The documents inserted with "_id" are: ${__result.insertedId}`);
-
-                            if (ws.readyState === 1) {
-                                ws.onmessage((msg) => {
-                                    var jsonObject = JSON.parse(msg.data);
-                                    console.log(jsonObject);
-                                });
-                                ws.send(JSON.stringify('{"type":"ping"}'));
-                                ws.send(JSON.stringify({ type: 'newSignedTransactions', transactionId: result._id, transactionHash: _result.transactionHash, rawTransaction: result.rawTransaction, transactionType: result.type, amount: result.amount, from: _result.from, to: _result.to, gasUsed: _result.gasUsed, contractAddress: _result.contractAddress }));
+                                if (ws.readyState === 1) {
+                                    ws.onmessage((msg) => {
+                                        var jsonObject = JSON.parse(msg.data);
+                                        console.log(jsonObject);
+                                    });
+                                    ws.send(JSON.stringify('{"type":"ping"}'));
+                                    ws.send(JSON.stringify({ type: 'newSignedTransactions', transactionId: result[i]._id, transactionHash: _result.transactionHash, rawTransaction: result[i].rawTransaction, transactionType: result[i].type, amount: result[i].amount, from: _result.from, to: _result.to, gasUsed: _result.gasUsed, contractAddress: _result.contractAddress }));
+                                }
+                                else {
+                                    console.log('WebSocket not ready');
+                                }
                             }
-                            else {
-                                console.log('WebSocket not ready');
-                            }
-                        }
+                        })
                     })
-                })
-            );
+                );
+            }
         }
 
     });

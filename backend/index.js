@@ -11,23 +11,32 @@ const cookieParser = require('cookie-parser');
 const responseTime = require('response-time');
 const timeout = require('connect-timeout');
 const Client = require('coinbase').Client;
-const mongoDB = require('./db');
+var session = require('express-session')
+var mongoDB = require('./db');
 const logger = require('./utils/logger');
-const session = require('express-session');
+const path = require('path');
+const mustacheExpress = require('mustache-express');
+const md5 = require('md5');
+const { AppRegistry } = require('react-native');
 
 dotenv.config();
+
+
+mongoDB.dbConn(function (err, client) {
+    if (err) console.log(err);
+    else {
+        console.log('connected');
+    }
+});
 
 if (cluster.isMaster) {
     console.log(`Number of CPUs is ${totalCPUs}`);
     console.log(`Master ${process.pid} is running`);
 
-    mongoDB.dbConn(function (err, client) {
-        if (err) console.log(err);
-        else {
-            // require('./cron');
-            require('./WebSocket');
-        }
-    });
+    if (mongoDB.getDb() !== null) {
+        // require('./cron');
+        // require('./WebSocket');
+    }
 
     // Fork workers.
     for (let i = 0; i < totalCPUs; i++) {
@@ -46,6 +55,10 @@ else {
     // Create a Server and run it on the port 5000, 5001, 5002, 5003
 
     const app = express();
+
+    app.engine('html', mustacheExpress());
+    app.set("view engine", "html");
+    app.set("views", path.join(path.resolve("."), '/public/templates/'));
 
     var corsOptions = {
         origin: ['http://localhost:3000'],
@@ -67,15 +80,40 @@ else {
     app.use(cookieParser());
     app.use(haltOnTimedout);
     app.use(responseTime());
+    app.use(haltOnTimedout);
     app.use(session({
         secret: 'dag crypto brigde',
-        resave: false,
+        resave: true,
         saveUninitialized: true,
         cookie: { secure: true }
     }))
+    app.use(haltOnTimedout);
+    app.use(express.static(path.join(path.resolve("."), '/'), {
+        extensions: ['html', 'htm'],
+    }));
+    app.use(function (req, res, next) {
+        res.setHeader("Content-Security-Policy", "script-src * 'unsafe-inline'; style-src *; default-src *; media-src *;");
+        return next();
+    });
 
-    function haltOnTimedout(req, res, next) {
-        if (!req.timedout) next()
+    function haltOnTimedout(request, response, next) {
+        if (!request.timedout) next()
+    }
+    function adminAuthenticate(request, response, next) {
+        if (request.cookies.LoginAdmin === 'true') {
+            next();
+        }
+        else {
+            response.redirect('/admin/login');
+        }
+    }
+    function userAuthenticate(request, response, next) {
+        if (request.cookies.LoginUser === 'true') {
+            next();
+        }
+        else {
+            response.redirect('/admin/login');
+        }
     }
 
     app.get('/', function (request, response) {
@@ -84,6 +122,231 @@ else {
     app.get('/transfer/', function (request, response) {
         response.send('Silence is golden');
     })
+    app.get('/admin/login/', function (request, response) {
+        if (request.cookies.LoginAdmin === 'true') {
+            response.redirect('/admin/index');
+        }
+        else {
+            const dbName = "Website";
+            const collectionName = "Setting";
+
+            var client = mongoDB.getDb();
+            const db = client.db(dbName);
+            var collection = db.collection(collectionName);
+
+            collection.find({}).toArray(function (queryCollectionErr, result) {
+                if (queryCollectionErr) {
+                    logger.log({
+                        level: 'error',
+                        message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
+                    })
+                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                    if (request.query.error && request.query.login) {
+                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { error: 'Login credential is wrong. Please try again!' });
+                    }
+                    else {
+                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'));
+                    }
+
+                } else if (result.length) {
+                    if (request.query.error && request.query.login) {
+                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, error: 'Login credential is wrong. Please try again!' });
+                    }
+                    else {
+                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
+                    }
+                }
+                else {
+                    if (request.query.error && request.query.login) {
+                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { error: 'Login credential is wrong. Please try again!' });
+                    }
+                    else {
+                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'));
+                    }
+                }
+            });
+        }
+    })
+    app.post('/admin/login/submit', function (request, response) {
+        const dbName = "Website";
+        const collectionName = "Admin Account";
+
+        var client = mongoDB.getDb();
+        const db = client.db(dbName);
+
+        db.collection(collectionName).find({ username: request.body.username, password: md5(request.body.password) }).toArray(function (queryCollectionErr, result) {
+            if (queryCollectionErr) {
+                logger.log({
+                    level: 'error',
+                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
+                })
+                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                response.redirect('/admin/login?error=true&login=true');
+                response.cookie('LoginAdmin', 'false', { expires: new Date(Date.now() + 900000) });
+            } else if (result.length) {
+                response.cookie('LoginAdmin', 'true', { expires: new Date(Date.now() + 900000) });
+                response.redirect('/admin/index');
+            }
+            else {
+                response.cookie('LoginAdmin', 'false', { expires: new Date(Date.now() + 900000) });
+                response.redirect('/admin/login?error=true&login=true');
+            }
+        });
+    })
+    app.get('/admin/logout', adminAuthenticate, function (request, response) {
+        response.cookie('LoginAdmin', 'false');
+        response.redirect('/admin/login');
+    })
+    app.get('/admin/index', adminAuthenticate, function (request, response) {
+        const dbName = "Website";
+
+        var client = mongoDB.getDb();
+        const db = client.db(dbName);
+
+        let iconURI;
+        let title;
+        let description;
+
+        db.collection("Setting").find({}).toArray(function (queryCollectionErr, result) {
+            if (queryCollectionErr) {
+                logger.log({
+                    level: 'error',
+                    message: `Error in query collection ${dbName}.${"Setting"}. Error: ${queryCollectionErr}`
+                })
+                console.log(`Unable to query document(s) on the collection "${"Setting"}". Error: ${queryCollectionErr}`);
+
+            } else if (result.length) {
+                iconURI = result[0].iconURI;
+                title = result[0].mp_title;
+                description = result[0].mp_description;
+            }
+        });
+
+        response.render(path.join(path.resolve("."), '/public/templates/admin/index.html'), { icon: iconURI, title: title, description: description });
+    })
+    app.get('/admin/setting', adminAuthenticate, function (request, response) {
+        const dbName = "Website";
+        const collectionName = "Setting";
+
+        var client = mongoDB.getDb();
+        const db = client.db(dbName);
+        var collection = db.collection(collectionName);
+
+        collection.find({}).toArray(function (queryCollectionErr, result) {
+            if (queryCollectionErr) {
+                logger.log({
+                    level: 'error',
+                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
+                })
+                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                response.render(path.join(path.resolve("."), '/public/templates/admin/setting.html'));
+
+            } else if (result.length) {
+                response.render(path.join(path.resolve("."), '/public/templates/admin/setting.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
+
+            }
+            else {
+                response.render(path.join(path.resolve("."), '/public/templates/admin/setting.html'));
+            }
+        });
+    })
+    app.get('/admin/manage-users', adminAuthenticate, function (request, response) {
+        const dbName = "Website";
+        const collectionName = "Setting";
+
+        var client = mongoDB.getDb();
+        const db = client.db(dbName);
+        var collection = db.collection(collectionName);
+
+        collection.find({}).toArray(function (queryCollectionErr, result) {
+            if (queryCollectionErr) {
+                logger.log({
+                    level: 'error',
+                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
+                })
+                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'));
+
+            } else if (result.length) {
+                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
+
+            }
+            else {
+                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'));
+            }
+        });
+    })
+    app.get('/admin/manage-transactions', adminAuthenticate, function (request, response) {
+        const dbName = "Website";
+        const collectionName = "Setting";
+
+        var client = mongoDB.getDb();
+        const db = client.db(dbName);
+        var collection = db.collection(collectionName);
+
+        collection.find({}).toArray(function (queryCollectionErr, result) {
+            if (queryCollectionErr) {
+                logger.log({
+                    level: 'error',
+                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
+                })
+                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'));
+
+            } else if (result.length) {
+                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
+
+            }
+            else {
+                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'));
+            }
+        });
+    })
+    app.get('/user/index', userAuthenticate, function (request, response) {
+
+    });
+    app.get('/user/login', userAuthenticate, function (request, response) {
+        
+    });
+    app.post('/user/login/submit', function (request, response) {
+        const dbName = "Website";
+        const collectionName = "User Accounts";
+
+        var client = mongoDB.getDb();
+        const db = client.db(dbName);
+
+        db.collection(collectionName).find({ username: request.body.username, password: md5(request.body.password) }).toArray(function (queryCollectionErr, result) {
+            if (queryCollectionErr) {
+                logger.log({
+                    level: 'error',
+                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
+                })
+                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                response.redirect('/user/login?error=true&login=true');
+                response.cookie('LoginUser', 'false', { expires: new Date(Date.now() + 900000) });
+            } else if (result.length) {
+                response.cookie('LoginUser', 'true', { expires: new Date(Date.now() + 900000) });
+                response.cookie('UserID', `${result.userID}`, {expires: new Date(Date.now() + 900000)});
+                response.redirect('/user/index');
+            }
+            else {
+                response.cookie('LoginUser', 'false', { expires: new Date(Date.now() + 900000) });
+                response.redirect('/user/login?error=true&login=true');
+            }
+        });
+    })
+    app.get('/user/logout', userAuthenticate, function (request, response) {
+
+    });
+    app.get('/user/setting', userAuthenticate, function (request, response) {
+
+    });
+    app.get('/user/transactions', userAuthenticate, function (request, response) {
+
+    });
+    app.get('/user/wallet', function (request, response) {
+
+    });
 
     app.get('/signedTransactions/getHash/:transaction_id', function (request, response) {
         const dbName = "transactions";
