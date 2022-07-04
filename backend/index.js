@@ -100,7 +100,7 @@ else {
         if (!request.timedout) next()
     }
     function adminAuthenticate(request, response, next) {
-        if (request.cookies.LoginAdmin === 'true') {
+        if (request.session.LoginAdmin === true) {
             next();
         }
         else {
@@ -108,7 +108,7 @@ else {
         }
     }
     function userAuthenticate(request, response, next) {
-        if (request.cookies.LoginUser === 'true') {
+        if (request.session.LoginUser === true) {
             next();
         }
         else {
@@ -123,7 +123,7 @@ else {
         response.send('Silence is golden');
     })
     app.get('/admin/login/', function (request, response) {
-        if (request.cookies.LoginAdmin === 'true') {
+        if (request.session.LoginAdmin === true) {
             response.redirect('/admin/index');
         }
         else {
@@ -182,19 +182,19 @@ else {
                 })
                 console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
                 response.redirect('/admin/login?error=true&login=true');
-                response.cookie('LoginAdmin', 'false', { expires: new Date(Date.now() + 900000) });
+                request.session.LoginAdmin = false;
             } else if (result.length) {
-                response.cookie('LoginAdmin', 'true', { expires: new Date(Date.now() + 900000) });
+                request.session.LoginAdmin = true;
                 response.redirect('/admin/index');
             }
             else {
-                response.cookie('LoginAdmin', 'false', { expires: new Date(Date.now() + 900000) });
+                request.session.LoginAdmin = false;
                 response.redirect('/admin/login?error=true&login=true');
             }
         });
     })
     app.get('/admin/logout', adminAuthenticate, function (request, response) {
-        response.cookie('LoginAdmin', 'false');
+        request.session.LoginAdmin = false;
         response.redirect('/admin/login');
     })
     app.get('/admin/index', adminAuthenticate, function (request, response) {
@@ -303,10 +303,76 @@ else {
         });
     })
     app.get('/user/index', userAuthenticate, function (request, response) {
+        const dbName = "Website";
 
+        var client = mongoDB.getDb();
+        const db = client.db(dbName);
+
+        let iconURI;
+        let title;
+        let description;
+
+        db.collection("Setting").find({}).toArray(function (queryCollectionErr, result) {
+            if (queryCollectionErr) {
+                logger.log({
+                    level: 'error',
+                    message: `Error in query collection ${dbName}.${"Setting"}. Error: ${queryCollectionErr}`
+                })
+                console.log(`Unable to query document(s) on the collection "${"Setting"}". Error: ${queryCollectionErr}`);
+
+            } else if (result.length) {
+                iconURI = result[0].iconURI;
+                title = result[0].mp_title;
+                description = result[0].mp_description;
+            }
+        });
+
+        response.render(path.join(path.resolve("."), '/public/templates/user/index.html'), { icon: iconURI, title: title, description: description, userID: request.cookie.UserID });
     });
     app.get('/user/login', userAuthenticate, function (request, response) {
-        
+        if (request.session.LoginUser === true) {
+            response.redirect('/user/index');
+        }
+        else {
+            const dbName = "Website";
+            const collectionName = "Setting";
+
+            var client = mongoDB.getDb();
+            const db = client.db(dbName);
+            var collection = db.collection(collectionName);
+
+            collection.find({}).toArray(function (queryCollectionErr, result) {
+                if (queryCollectionErr) {
+                    logger.log({
+                        level: 'error',
+                        message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
+                    })
+                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                    if (request.query.error && request.query.login) {
+                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { error: 'Login credential is wrong. Please try again!' });
+                    }
+                    else {
+                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'));
+                    }
+
+                } else if (result.length) {
+                    if (request.query.error && request.query.login) {
+                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, error: 'Login failed. Something wrong! Please report to admin.' });
+                    }
+                    else {
+                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
+                    }
+                }
+                else {
+                    if (request.query.error && request.query.login) {
+                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { error: 'Login credential is wrong. Please try again!' });
+                    }
+                    else {
+                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'));
+                    }
+                }
+            });
+        }
     });
     app.post('/user/login/submit', function (request, response) {
         const dbName = "Website";
@@ -323,20 +389,21 @@ else {
                 })
                 console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
                 response.redirect('/user/login?error=true&login=true');
-                response.cookie('LoginUser', 'false', { expires: new Date(Date.now() + 900000) });
+                request.session.LoginUser = false;
             } else if (result.length) {
-                response.cookie('LoginUser', 'true', { expires: new Date(Date.now() + 900000) });
-                response.cookie('UserID', `${result.userID}`, {expires: new Date(Date.now() + 900000)});
+                request.session.LoginUser = true;
+                request.session.UserID = result.userID;
                 response.redirect('/user/index');
             }
             else {
-                response.cookie('LoginUser', 'false', { expires: new Date(Date.now() + 900000) });
+                request.session.LoginUser = false;
                 response.redirect('/user/login?error=true&login=true');
             }
         });
     })
     app.get('/user/logout', userAuthenticate, function (request, response) {
-
+        request.session.LoginUser = false;
+        response.redirect('/user/login');
     });
     app.get('/user/setting', userAuthenticate, function (request, response) {
 
