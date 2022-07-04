@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const compression = require('compression');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
@@ -12,14 +11,30 @@ const responseTime = require('response-time');
 const timeout = require('connect-timeout');
 const Client = require('coinbase').Client;
 const session = require('express-session')
+const mustacheExpress = require('mustache-express');
+const RedisStore = require("connect-redis")(session);
+
 const mongoDB = require('./db');
 const logger = require('./utils/logger');
 const path = require('path');
-const mustacheExpress = require('mustache-express');
 const md5 = require('md5');
 const nodemailer = require('nodemailer');
 const ObjectId = require('mongodb').ObjectId; 
-const RedisStore = require("connect-redis")(session);
+const dotenv = require('dotenv');
+
+const {logout} = require("./user/logout");
+const {setting} = require("./user/setting");
+const {index} = require("./user/index");
+const {login, loginSubmit} = require("./user/login");
+const {transactions} = require("./user/transactions");
+const {wallet} = require("./user/wallet");
+const {register, registerSubmit, registerSuccess, verifyEmail} = require("./user/register");
+const {adminIndex} = require("./admin/index");
+const {adminLogin, adminLoginSubmit} = require("./admin/login");
+const {adminLogout} = require("./admin/logout");
+const {adminSetting} = require("./admin/setting");
+const {adminTransactions} = require("./admin/transactions");
+const {adminUsers} = require("./admin/users");
 
 const { createClient } = require("redis");
 let redisClient = createClient({ legacyMode: true });
@@ -131,577 +146,25 @@ else {
     app.get('/transfer/', function (request, response) {
         response.send('Silence is golden');
     })
-    app.get('/admin/login/', function (request, response) {
-        if (request.session.LoginAdmin === true) {
-            response.redirect('/admin/index');
-        }
-        else {
-            const dbName = "Website";
-            const collectionName = "Setting";
-
-            var client = mongoDB.getDb();
-            const db = client.db(dbName);
-            var collection = db.collection(collectionName);
-
-            collection.find({}).toArray(function (queryCollectionErr, result) {
-                if (queryCollectionErr) {
-                    logger.log({
-                        level: 'error',
-                        message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                    })
-                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { error: 'Login credential is wrong. Please try again!' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'));
-                    }
-
-                } else if (result.length) {
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, error: 'Login credential is wrong. Please try again!' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
-                    }
-                }
-                else {
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'), { error: 'Login credential is wrong. Please try again!' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/admin/login.html'));
-                    }
-                }
-            });
-        }
-    })
-    app.post('/admin/login/submit', function (request, response) {
-        const dbName = "Website";
-        const collectionName = "Admin Account";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-
-        db.collection(collectionName).find({ username: request.body.username, password: md5(request.body.password) }).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                response.redirect('/admin/login?error=true&login=true');
-                request.session.LoginAdmin = false;
-                request.session.save()
-            } else if (result.length) {
-                request.session.LoginAdmin = true;
-                request.session.save()
-                response.redirect('/admin/index');
-            }
-            else {
-                request.session.LoginAdmin = false;
-                request.session.save();
-                response.redirect('/admin/login?error=true&login=true');
-            }
-        });
-    })
-    app.get('/admin/logout', adminAuthenticate, function (request, response) {
-        request.session.destroy();
-        response.redirect('/admin/login');
-    })
-    app.get('/admin/index', adminAuthenticate, function (request, response) {
-        const dbName = "Website";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-
-        let iconURI;
-        let title;
-        let description;
-
-        db.collection("Setting").find({}).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${"Setting"}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${"Setting"}". Error: ${queryCollectionErr}`);
-
-            } else if (result.length) {
-                iconURI = result[0].iconURI;
-                title = result[0].mp_title;
-                description = result[0].mp_description;
-            }
-        });
-
-        response.render(path.join(path.resolve("."), '/public/templates/admin/index.html'), { icon: iconURI, title: title, description: description });
-    })
-    app.get('/admin/setting', adminAuthenticate, function (request, response) {
-        const dbName = "Website";
-        const collectionName = "Setting";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-        var collection = db.collection(collectionName);
-
-        collection.find({}).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                response.render(path.join(path.resolve("."), '/public/templates/admin/setting.html'));
-
-            } else if (result.length) {
-                response.render(path.join(path.resolve("."), '/public/templates/admin/setting.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
-
-            }
-            else {
-                response.render(path.join(path.resolve("."), '/public/templates/admin/setting.html'));
-            }
-        });
-    })
-    app.get('/admin/manage-users', adminAuthenticate, function (request, response) {
-        const dbName = "Website";
-        const collectionName = "Setting";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-        var collection = db.collection(collectionName);
-
-        collection.find({}).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'));
-
-            } else if (result.length) {
-                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
-
-            }
-            else {
-                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'));
-            }
-        });
-    })
-    app.get('/admin/manage-transactions', adminAuthenticate, function (request, response) {
-        const dbName = "Website";
-        const collectionName = "Setting";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-        var collection = db.collection(collectionName);
-
-        collection.find({}).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'));
-
-            } else if (result.length) {
-                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
-
-            }
-            else {
-                response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'));
-            }
-        });
-    })
-    app.get('/register', function (request, response) {
-        if (request.session.LoginUser === true) {
-            response.redirect('/user/index');
-        }
-        else {
-            const dbName = "Website";
-            const collectionName = "Setting";
-
-            var client = mongoDB.getDb();
-            const db = client.db(dbName);
-            var collection = db.collection(collectionName);
-
-            collection.find({}).toArray(function (queryCollectionErr, result) {
-                if (queryCollectionErr) {
-                    logger.log({
-                        level: 'error',
-                        message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                    })
-                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                    if (request.query.error && request.query.accountExist) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { error: true, accountExist: 'This email is already registered for another account. Please check again your register email!' });
-                    }
-                    else if (request.query.error) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { error: true, unknowError: "Can't register new account at current. Please try again later or ask our support!" });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'));
-                    }
-
-                } else if (result.length) {
-                    if (request.query.error && request.query.accountExist) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, error: true, accountExist: 'This email is already registered for another account. Please check again your register email!' });
-                    }
-                    else if (request.query.error) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { error: true, unknowError: "Can't register new account at current. Please try again later or ask our support!" });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
-                    }
-                }
-                else {
-                    if (request.query.error && request.query.accountExist) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { error: true, accountExist: 'This email is already registered for another account. Please check again your register email!' });
-                    }
-                    else if (request.query.error) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { error: true, unknowError: "Can't register new account at current. Please try again later or ask our support!" });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/register.html'));
-                    }
-                }
-            });
-        }
-    });
-    app.post('/register/submit', function (request, response) {
-        const dbName = "Website";
-        const collectionName = "User Accounts";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-
-        db.collection(collectionName).find({ email: request.body.email }).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                response.redirect('/register?error=true&unknowError=true');
-            } else if (result.length > 0) {
-                response.redirect('/register?error=true&accountExist=true');
-            }
-            else {
-                db.collection(collectionName).insertOne({ username: request.body.username, email: request.body.email, password: md5(request.body.password) }, function (_queryCollectionErr, _result) {
-                    if (_queryCollectionErr) {
-                        logger.log({
-                            level: 'error',
-                            message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                        })
-                        console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                        response.redirect('/register?error=true&unknowError=true');
-                    }
-                    else {
-                        logger.log({
-                            level: 'info',
-                            message: `Success create new user in collection ${dbName}.${collectionName}. InsertedID : ${_result.insertedId}`
-                        })
-                        var transporter = nodemailer.createTransport({
-                            service: 'gmail',
-                            auth: {
-                                user: process.env.EMAIL_ADDRESS,
-                                pass: process.env.EMAIL_PASSWORD
-                            }
-                        });
-                        var mailOptions = {
-                            from: process.env.EMAIL_ADDRESS,
-                            to: request.body.email,
-                            subject: 'Email verify for crypto payment',
-                            html: `<p>Please click the following link to verify your email!</p><br/><a href="${process.env.PAGE_URL}/register/emailVerify/${_result.insertedId}">Verify Link</a>`
-                        };
-                        transporter.sendMail(mailOptions, function (error, info) {
-                            if (error) {
-                                logger.log({
-                                    level: 'error',
-                                    message: `Send email failed. Error: ${error}`
-                                })
-                                response.redirect('/register?error=true&unknowError=true');
-                            } else {
-                                logger.log({
-                                    level: 'info',
-                                    message: `Email sent to user with ID : ${_result.insertedId}`
-                                })
-                                response.redirect(`/register/success?userid=${_result.insertedId}`);
-                            }
-                        });
-                    }
-                })
-            }
-        });
-    })
-    app.get('/register/emailVerify/:userID', function(request, response){
-        const dbName = "Website";
-        const collectionName = "User Accounts";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-
-        db.collection(collectionName).find({_id: new ObjectId(request.params.userID)}).toArray(function(queryCollectionErr, result){
-            if(queryCollectionErr)
-            {
-                logger.log({
-                    level: 'error',
-                    message: `Verify email failed. Error: ${queryCollectionErr}`
-                })
-                response.redirect('/register?error=true&unknowError=true');
-            }
-            else if (result.length){
-                db.collection(collectionName).updateOne({_id: new ObjectId(request.params.userID)}, {$set: {emailVerify: true}}, function(_queryCollectionErr, _query){
-                    if(_queryCollectionErr){
-                        logger.log({
-                            level: 'error',
-                            message: `Failed update emailVerify for user with ID : ${request.params.userID}. Error: ${_queryCollectionErr}`
-                        })
-                    }
-                    else{
-                        logger.log({
-                            level: 'info',
-                            message: `Email verified for user with ID : ${request.params.userID}`
-                        });
-                        response.redirect(`/register/success?userid=${request.params.userID}&emailVerify=true`);
-                    }
-                });
-            }
-            else{
-                logger.log({
-                    level: 'error',
-                    message: `Verify email failed.`
-                })
-                response.redirect('/register?error=true&unknowError=true');
-            }
-        })
-    })
-    app.get('/register/success', function (request, response) {
-        response.render(path.join(path.resolve('.'), '/public/templates/user/register.html'), { success: true, userID: request.query.userid, emailVerify: request.query.emailVerify });
-    })
-    app.get('/login', function (request, response) {
-        if (request.session.LoginUser === true) {
-            response.redirect('/user/index');
-        }
-        else {
-            const dbName = "Website";
-            const collectionName = "Setting";
-
-            var client = mongoDB.getDb();
-            const db = client.db(dbName);
-            var collection = db.collection(collectionName);
-
-            collection.find({}).toArray(function (queryCollectionErr, result) {
-                if (queryCollectionErr) {
-                    logger.log({
-                        level: 'error',
-                        message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                    })
-                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { error: 'Login credential is wrong. Please try again!' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'));
-                    }
-
-                } else if (result.length) {
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, error: 'Login failed. Something wrong! Please report to admin.' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
-                    }
-                }
-                else {
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { error: 'Login credential is wrong. Please try again!' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'));
-                    }
-                }
-            });
-        }
-    });
-    app.get('/user/login', function (request, response) {
-        if (request.session.LoginUser === true) {
-            response.redirect('/user/index');
-        }
-        else {
-            const dbName = "Website";
-            const collectionName = "Setting";
-
-            var client = mongoDB.getDb();
-            const db = client.db(dbName);
-            var collection = db.collection(collectionName);
-
-            collection.find({}).toArray(function (queryCollectionErr, result) {
-                if (queryCollectionErr) {
-                    logger.log({
-                        level: 'error',
-                        message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                    })
-                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { error: 'Login credential is wrong. Please try again!' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'));
-                    }
-
-                } else if (result.length) {
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, error: 'Login failed. Something wrong! Please report to admin.' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
-                    }
-                }
-                else {
-                    if (request.query.error && request.query.login) {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { error: 'Login credential is wrong. Please try again!' });
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/login.html'));
-                    }
-                }
-            });
-        }
-    });
-    app.post('/user/login/submit', function (request, response) {
-        const dbName = "Website";
-        const collectionName = "User Accounts";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-
-        db.collection(collectionName).find({ username: request.body.username, password: md5(request.body.password) }).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                response.redirect('/user/login?error=true&login=true');
-                request.session.LoginUser = false;
-                request.session.save();
-            } else if (result.length) {
-                request.session.LoginUser = true;
-                request.session.UserID = result[0]._id.toString();
-                request.session.save();
-                response.redirect('/user/index');
-            }
-            else {
-                request.session.LoginUser = false;
-                request.session.save();
-                response.redirect('/user/login?error=true&login=true');
-            }
-        });
-    })
-    app.get('/user/index', userAuthenticate, async function (request, response) {
-        const dbName = "Website";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-
-        let iconURI;
-        let title;
-        let description;
-
-        db.collection("Setting").findOne({}, function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${"Setting"}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${"Setting"}". Error: ${queryCollectionErr}`);
-
-            } else {
-                iconURI = result.iconURI;
-                title = result.mp_title;
-                description = result.mp_description;
-            }
-        });
-
-        await db.collection("User Accounts").findOne({_id: new ObjectId(request.session.UserID)}, function(queryCollectionErr, result){
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${"Setting"}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${"Setting"}". Error: ${queryCollectionErr}`);
-
-            } else {
-                request.session.user = result;
-                response.render(path.join(path.resolve("."), '/public/templates/user/index.html'), { icon: iconURI, title: title, description: description, userID: request.session.UserID, user: result });
-            }
-        });
-    });
-    app.get('/user/logout', userAuthenticate, function (request, response) {
-        request.session.destroy();
-        response.redirect('/user/login');
-    });
-    app.get('/user/setting', userAuthenticate, function (request, response) {
-        const dbName = "Website";
-        const collectionName = "Setting";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-        var collection = db.collection(collectionName);
-
-        collection.find({}).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                db.collection("User Accounts").find({ userID: request.session.UserID }).toArray(function (_queryCollectionErr, _result) {
-                    if (_queryCollectionErr) {
-
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { result: _result });
-                    }
-                });
-
-            } else if (result.length) {
-                db.collection("User Accounts").find({ userID: request.session.UserID }).toArray(function (_queryCollectionErr, _result) {
-                    if (_queryCollectionErr) {
-                        logger.log({
-                            level: 'error',
-                            message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                        })
-                        console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, result: _result });
-                    }
-                });
-            }
-            else {
-                db.collection("User Accounts").find({ userID: request.session.UserID }).toArray(function (_queryCollectionErr, _result) {
-                    if (_queryCollectionErr) {
-                        logger.log({
-                            level: 'error',
-                            message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                        })
-                        console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-                    }
-                    else {
-                        response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { result: _result });
-                    }
-                });
-            }
-        });
-    });
-    app.get('/user/transactions', userAuthenticate, function (request, response) {
-        response.render(path.join(path.resolve('.'), '/public/templates/user/manage-transactions.html'));
-    });
-    app.get('/user/wallet', userAuthenticate, function (request, response) {
-        response.render(path.join(path.resolve('.'), '/public/templates/user/manage-wallet.html'));
-    });
+    app.get('/admin/login/', adminLogin);
+    app.post('/admin/login/submit', adminLoginSubmit);
+    app.get('/admin/logout', adminAuthenticate, adminLogout);
+    app.get('/admin/index', adminAuthenticate, adminIndex);
+    app.get('/admin/setting', adminAuthenticate, adminSetting);
+    app.get('/admin/manage-users', adminAuthenticate, adminUsers);
+    app.get('/admin/manage-transactions', adminAuthenticate, adminTransactions);
+    app.get('/register', register);
+    app.post('/register/submit', registerSubmit);
+    app.get('/register/emailVerify/:userID', verifyEmail);
+    app.get('/register/success', registerSuccess);
+    app.get('/login', login);
+    app.get('/user/login', login);
+    app.post('/user/login/submit', loginSubmit)
+    app.get('/user/index', userAuthenticate, index);
+    app.get('/user/logout', userAuthenticate, logout);
+    app.get('/user/setting', userAuthenticate, setting);
+    app.get('/user/manage-transactions', userAuthenticate, transactions);
+    app.get('/user/manage-wallet', userAuthenticate, wallet);
 
     app.get('/signedTransactions/getHash/:transaction_id', function (request, response) {
         const dbName = "transactions";
