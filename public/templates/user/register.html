@@ -1,0 +1,68 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="{{#icon}}{{icon}}{{/icon}}{{^icon}}../public/favicon.ico{{/icon}}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description"
+        content="{{#description}}{{description}}{{/description}}{{^description}}DAG Crypto Bridge for easy payment{{/description}}" />
+    <link rel="stylesheet" href="../public/templates/admin/admin.css">
+    <title>{{#title}}{{title}}{{/title}}{{^title}}Crypto Payment{{/title}}</title>
+</head>
+
+<body>
+    <div id="root">
+        <h1>Register</h1>
+        <div class="error">{{#error}}
+            {{#accountExist}}{{accountExist}}{{/accountExist}}{{^accountExist}}
+            This email is already registered for another account. Please check again your register email1
+            {{/accountExist}}
+            {{#unknowError}}{{unknowError}}{{/unknowError}}{{^unknowError}}
+            Unknow Error!
+            {{/unknowError}}
+
+            {{/error}}{{^error}}{{/error}}</div>
+        <div class="container">
+            {{#success}}
+            <div class="sucess">
+
+                {{#emailVerify}}
+                <div class="emailVerified">
+                    <p>
+                        Email verified successfully. Your account is activated and protected by Crypto Payment!
+                    </p>
+                </div>{{/emailVerify}}{{^emailVerify}}
+                <div class="notEmailVerified">
+                    <p>
+                        Email doesn't be verify. Please verify your email so we can help you protect your account!
+                    </p>
+                </div>
+                {{/emailVerify}}
+                <p>User registered. UserID: {{#userID}}{{userID}}{{/userID}}{{^userID}}{{/userID}}</p>
+            </div>
+            {{/success}}{{^success}}
+            <form method="POST" action="/register/submit">
+                <div class="username">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" />
+                </div>
+                <div class="email">
+                    <label for="email">Password</label>
+                    <input id="email" type="email" name="email" />
+                </div>
+                <div class="password">
+                    <label for="password">Password</label>
+                    <input id="password" type="password" name="password" />
+                </div>
+                <button type="submit">Register</button>
+            </form>
+            {{/success}}
+        </div>
+    </div>
+</body>
+<footer>
+
+</footer>
+
+</html>

@@ -45,6 +45,7 @@
     "near-api-js": "^0.44.2",
     "net": "^1.0.2",
     "node-cron": "^3.0.0",
+    "nodemailer": "^6.7.6",
     "os": "^0.1.2",
     "os-browserify": "^0.3.0",
     "passport": "^0.6.0",
