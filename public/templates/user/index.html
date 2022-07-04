@@ -6,14 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="{{#description}}{{description}}{{/description}}{{^description}}DAG Crypto Bridge for easy payment{{/description}}" />
-    <link rel="stylesheet" href="../public/templates/admin/admin.css">
+    <link rel="stylesheet" href="../public/templates/user/user.css">
     <title>{{#title}}{{title}}{{/title}}{{^title}}Crypto Payment{{/title}}</title>
 </head>
 
 <body>
     <div id="top-navigation"></div>
     <div id="root">
-        <h1>Hello Admin</h1>
+        <h1>Hello {{#user}}{{username}}{{/user}}{{^user}}User{{/user}}</h1>
         <div>{{#error}}{{error}}{{/error}}{{^error}}{{/error}}</div>
     </div>
 </body>
@@ -21,7 +21,7 @@
     <script script-src='self' src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <script>
         $(function () {
-            $("#top-navigation").load("../public/templates/admin/navigation.html");
+            $("#top-navigation").load("../public/templates/user/navigation.html");
         });
     </script>
 </footer>

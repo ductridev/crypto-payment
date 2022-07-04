@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#000000" />
     <meta name="description"
         content="{{#description}}{{description}}{{/description}}{{^description}}DAG Crypto Bridge for easy payment{{/description}}" />
-    <link rel="stylesheet" href="../public/templates/admin/admin.css">
+    <link rel="stylesheet" href="../public/templates/user/user.css">
     <title>{{#title}}{{title}}{{/title}}{{^title}}Crypto Payment{{/title}}</title>
 </head>
 
@@ -15,12 +15,8 @@
     <div id="root">
         <h1>Register</h1>
         <div class="error">{{#error}}
-            {{#accountExist}}{{accountExist}}{{/accountExist}}{{^accountExist}}
-            This email is already registered for another account. Please check again your register email1
-            {{/accountExist}}
-            {{#unknowError}}{{unknowError}}{{/unknowError}}{{^unknowError}}
-            Unknow Error!
-            {{/unknowError}}
+            {{#accountExist}}{{accountExist}}{{/accountExist}}{{^accountExist}}{{/accountExist}}
+            {{#unknowError}}{{unknowError}}{{/unknowError}}{{^unknowError}}{{/unknowError}}
 
             {{/error}}{{^error}}{{/error}}</div>
         <div class="container">
@@ -48,7 +44,7 @@
                     <input id="username" name="username" />
                 </div>
                 <div class="email">
-                    <label for="email">Password</label>
+                    <label for="email">Email</label>
                     <input id="email" type="email" name="email" />
                 </div>
                 <div class="password">
