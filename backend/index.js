@@ -13,6 +13,7 @@ const Client = require('coinbase').Client;
 const session = require('express-session')
 const mustacheExpress = require('mustache-express');
 const RedisStore = require("connect-redis")(session);
+const { createClient } = require("redis");
 
 const mongoDB = require('./db');
 const logger = require('./utils/logger');
@@ -36,7 +37,6 @@ const {adminAuthenticate, userAuthenticate} = require('./utils/authencate');
 const {getHash} = require('./transactions/getHash');
 const {saveTransactions} = require('./transactions/saveTransactions');
 
-const { createClient } = require("redis");
 let redisClient = createClient({ legacyMode: true });
 redisClient.connect().catch(console.error);
 
@@ -88,19 +88,19 @@ else {
     /* handle middlewares*/
     app.use(timeout('5s'));
     app.use(helmet());
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(compression());
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(bodyParser.json());
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(bodyParser.urlencoded({ extended: false }));
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(cors(corsOptions));
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(cookieParser());
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(responseTime());
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(session({
         store: new RedisStore({ client: redisClient }),
         secret: 'dag crypto brigde',
@@ -110,10 +110,11 @@ else {
             maxAge: 1*60*60*1000
         }
     }))
-    app.use(haltOnTimedout);
+    app.use(haltOnTimedout());
     app.use(express.static(path.join(path.resolve("."), '/'), {
         extensions: ['html', 'htm'],
     }));
+    app.use(haltOnTimedout());
     app.use(function (req, res, next) {
         res.setHeader("Content-Security-Policy", "script-src * 'unsafe-inline'; style-src *; default-src *; media-src *;");
         return next();
