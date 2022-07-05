@@ -13,9 +13,6 @@ const config = {
         // loggerUrl: 'logger.opengsn.org',
     }
 }
-// const provider = await RelayProvider.newProvider({ provider: process.env.INFURA_API || EthereumWeb3.currentProvider, config }).init();
-const provider = await RelayProvider.newProvider({ provider: new Web3.providers.HttpProvider('http://127.0.0.1:8545'), config }).init()
-const EthereumWeb3 = new Web3(provider);
 
 const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
     const options = {
@@ -88,6 +85,10 @@ const updateTokenPriceTask = cron.schedule("*/15 * * * *", async () => {
 
 const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
 
+    // const provider = await RelayProvider.newProvider({ provider: process.env.INFURA_API || EthereumWeb3.currentProvider, config }).init();
+    const provider = await RelayProvider.newProvider({ provider: new Web3.providers.HttpProvider('http://127.0.0.1:8545'), config }).init()
+    const EthereumWeb3 = new Web3(provider);
+    
     var batch = new EthereumWeb3.BatchRequest();
 
     // const ws = new WebSocket('ws://localhost:17214/');
