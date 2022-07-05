@@ -32,6 +32,9 @@ const {adminLogout} = require("./admin/logout");
 const {adminSetting} = require("./admin/setting");
 const {adminTransactions} = require("./admin/transactions");
 const {adminUsers} = require("./admin/users");
+const {adminAuthenticate, userAuthenticate} = require('./utils/authencate');
+const {getHash} = require('./transactions/getHash');
+const {saveTransactions} = require('./transactions/saveTransactions');
 
 const { createClient } = require("redis");
 let redisClient = createClient({ legacyMode: true });
@@ -51,7 +54,7 @@ if (cluster.isMaster) {
     console.log(`Master ${process.pid} is running`);
 
     if (mongoDB.getDb() !== null) {
-        // require('./cron');
+        require('./cron');
         // require('./WebSocket');
     }
 
@@ -115,26 +118,8 @@ else {
         res.setHeader("Content-Security-Policy", "script-src * 'unsafe-inline'; style-src *; default-src *; media-src *;");
         return next();
     });
-
     function haltOnTimedout(request, response, next) {
         if (!request.timedout) next()
-    }
-    function adminAuthenticate(request, response, next) {
-        if (request.session.LoginAdmin === true) {
-            next();
-        }
-        else {
-            response.redirect('/admin/login');
-        }
-    }
-    function userAuthenticate(request, response, next) {
-        console.log(request.session);
-        if (request.session.LoginUser === true) {
-            next();
-        }
-        else {
-            response.redirect('/user/login');
-        }
     }
 
     app.get('/', function (request, response) {
@@ -163,57 +148,8 @@ else {
     app.get('/user/manage-transactions', userAuthenticate, transactions);
     app.get('/user/manage-wallet', userAuthenticate, wallet);
 
-    app.get('/signedTransactions/getHash/:transaction_id', function (request, response) {
-        const dbName = "transactions";
-        const collectionName = "Receipts";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-        var collection = db.collection(collectionName);
-
-        let input = { transaction_id: request.params.transaction_id };
-
-        collection.findOne(input).toArray(function (queryCollectionErr, result) {
-            if (queryCollectionErr) {
-                logger.log({
-                    level: 'error',
-                    message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
-                })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-
-            } else if (result.length) {
-
-                response.send({ transactionHash: result.receipt });
-
-            }
-        });
-    })
-    app.get('/signedTransactions/save/:rawTransaction/:type/:amount', function (request, response) {
-        const dbName = "transactions";
-        const collectionName = "Signed Transactions";
-
-        var client = mongoDB.getDb();
-        const db = client.db(dbName);
-        var collection = db.collection(collectionName);
-
-        let input = { rawTransaction: request.params.rawTransaction, type: request.params.type, amount: request.params.amount };
-
-        collection.insertOne(input, (insertCollectionErr, result) => {
-            if (insertCollectionErr) {
-                console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
-                logger.log({
-                    level: 'error',
-                    message: `Error in insert collection ${dbName}.${collectionName}. Error: ${insertCollectionErr}`
-                });
-                response.send({ error: 'Error happened. Please contect support or try later.' })
-            } else {
-                console.log(`Inserted ${result.length} documents into the "${collectionName}" collection. The documents inserted with "_id" are: ${result.insertedId}`);
-                response.send({ transaction_id: result.insertedId })
-            }
-        });
-
-        client.close();
-    })
+    app.get('/signedTransactions/getHash/:transaction_id', getHash);
+    app.get('/signedTransactions/save/:rawTransaction/:type/:amount', saveTransactions);
 
     // Temporary disabled
     // app.get('/coinbase/auth/', function (request, response) {
