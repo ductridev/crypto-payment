@@ -6,7 +6,7 @@ const nodemailer = require('nodemailer');
 const ObjectId = require('mongodb').ObjectId; 
 const dotenv = require('dotenv');
 
-const adminIndex = function (request, response) {
+const adminIndex = async function (request, response) {
     const dbName = "Website";
 
     var client = mongoDB.getDb();
@@ -31,7 +31,22 @@ const adminIndex = function (request, response) {
         }
     });
 
-    response.render(path.join(path.resolve("."), '/public/templates/admin/index.html'), { icon: iconURI, title: title, description: description, page: 'index' });
+    var numOfUsers = await db.collection("User Accounts").countDocuments({});
+    var numOfTransactions = await client.db("transactions").collection("Receipts").countDocuments({});
+    var numOfSuccTransactions = await client.db("transactions").collection("Receipts").countDocuments({status: 'success'});
+    var numOfFailTransactions = await client.db("transactions").collection("Receipts").countDocuments({status: 'failed'});
+    var totalTransValue = await client.db("transactions").collection("Receipts").aggregate([{
+        $group:{
+            _id: '',
+            "amount": { $sum: '$amount'}
+        },
+        $project: {
+            _id: 0,
+            "totalAmount": '$amount'
+        }
+    }]);
+
+    response.render(path.join(path.resolve("."), '/public/templates/admin/index.html'), { icon: iconURI, title: title, description: description, numOfUsers: numOfUsers, numOfTransactions: numOfTransactions, numOfSuccTransactions: numOfSuccTransactions, numOfFailTransactions: numOfFailTransactions, totalAmount: totalTransValue.totalAmount, page: 'index' });
 }
 
 module.exports = {
