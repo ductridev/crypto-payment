@@ -14,11 +14,60 @@
 <body aria-page="{{#page}}{{page}}{{/page}}{{^page}}{{/page}}">
     <div class="column-container">
         <div id="sidebar"></div>
-        <div class="row">
+        <div class="_row row">
             <div class="top-navigation" id="top-navigation"></div>
             <div class="main" id="root">
                 <h1>Hello Admin</h1>
                 <div>{{#error}}{{error}}{{/error}}{{^error}}{{/error}}</div>
+                <div class="info-container">
+                    <div class="row">
+                        <div class="col info">
+                            <div class="info-box">
+                                <p class="info-header">Total of Registerd Users</p>
+                                <p class="info-body">
+                                    {{#numOfUsers}}{{numOfUsers}}{{/numOfUsers}}{{^numOfUsers}}0{{/numOfUsers}}
+                                    Users</p>
+                            </div>
+                        </div>
+                        <div class="col info">
+                            <div class="info-box">
+                                <p class="info-header">Total value of Transactions</p>
+                                <p class="info-body">
+                                    {{#totalAmount}}{{totalAmount}}{{/totalAmount}}{{^totalAmount}}0{{/totalAmount}} U.S
+                                    Dollar
+                                </p>
+                            </div>
+                        </div>
+                        <div class="w-100 h-10"></div>
+                        <div class="col info">
+                            <div class="info-box">
+                                <p class="info-header">Total of Transactions</p>
+                                <p class="info-body">
+                                    {{#numOfTransactions}}{{numOfTransactions}}{{/numOfTransactions}}{{^numOfTransactions}}0{{/numOfTransactions}}
+                                    Transactions</p>
+                            </div>
+                        </div>
+                        <div class="col info">
+                            <div class="info-box">
+                                <p class="info-header">Total of Success Transactions</p>
+                                <p class="info-body">
+                                    {{#numOfSuccTransactions}}{{numOfSuccTransactions}}{{/numOfSuccTransactions}}{{^numOfSuccTransactions}}0{{/numOfSuccTransactions}}
+                                    Success Transactions</p>
+                            </div>
+                        </div>
+                        <div class="col info">
+                            <div class="info-box">
+                                <p class="info-header">Total of Failed Transactions</p>
+                                <p class="info-body">
+                                    {{#numOfFailTransactions}}{{numOfFailTransactions}}{{/numOfFailTransactions}}{{^numOfFailTransactions}}0{{/numOfFailTransactions}}
+                                    Failed Transactions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer">
+                <p><a href="/admin/setting">Setting</a>-></p>
             </div>
         </div>
     </div>
