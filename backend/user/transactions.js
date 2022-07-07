@@ -7,7 +7,7 @@ const ObjectId = require('mongodb').ObjectId;
 const dotenv = require('dotenv');
 
 const transactions = function (request, response) {
-    response.render(path.join(path.resolve('.'), '/public/templates/user/manage-transactions.html'));
+    response.render(path.join(path.resolve('.'), '/public/templates/user/manage-transactions.html'), { page: 'transactions' });
 }
 
 module.exports = {

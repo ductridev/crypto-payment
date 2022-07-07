@@ -1,6 +1,6 @@
 body {
-    background-color: #00152f;
-    color: white;
+    background-color: #00152f !important;
+    color: white !important;
 }
 
 h1,
@@ -16,6 +16,8 @@ h5 {
 .topnav {
     background-color: #00152f;
     overflow: hidden;
+    width: 100% !important;
+    border-bottom: 1px solid #3f5063;
 }
 
 /* Style the links inside the navigation bar */
@@ -32,4 +34,26 @@ h5 {
 .topnav a:hover {
     opacity: 0.7;
     transition: all 0.4s ease-in-out;
+}
+
+.sidebar-main{
+    width: max-content !important;
+    background-color: #00152f;
+    height: 100%;
+    border-right: 1px solid #3f5063;
+}
+
+.main{
+    --bs-gutter-x: 1.5rem;
+    margin-left: calc(var(--bs-gutter-x) * .5);
+}
+
+.column-container{
+    display: flex;
+    height: 100%;
+}
+
+.row{
+    display: unset !important;
+    width: 100%;
 }

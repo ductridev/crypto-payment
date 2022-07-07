@@ -21,14 +21,14 @@ const adminTransactions = function (request, response) {
                 message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
             })
             console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'));
+            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'), { page: 'transactions' });
 
         } else if (result.length) {
-            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
+            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, page: 'transactions' });
 
         }
         else {
-            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'));
+            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-transactions.html'), { page: 'transactions' });
         }
     });
 }

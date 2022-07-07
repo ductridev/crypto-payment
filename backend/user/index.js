@@ -41,7 +41,7 @@ const index = async function (request, response) {
 
         } else {
             request.session.user = result;
-            response.render(path.join(path.resolve("."), '/public/templates/user/index.html'), { icon: iconURI, title: title, description: description, userID: request.session.UserID, user: result });
+            response.render(path.join(path.resolve("."), '/public/templates/user/index.html'), { icon: iconURI, title: title, description: description, userID: request.session.UserID, user: result, page: 'index' });
         }
     });
 }

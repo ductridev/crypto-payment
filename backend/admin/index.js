@@ -31,7 +31,7 @@ const adminIndex = function (request, response) {
         }
     });
 
-    response.render(path.join(path.resolve("."), '/public/templates/admin/index.html'), { icon: iconURI, title: title, description: description });
+    response.render(path.join(path.resolve("."), '/public/templates/admin/index.html'), { icon: iconURI, title: title, description: description, page: 'index' });
 }
 
 module.exports = {

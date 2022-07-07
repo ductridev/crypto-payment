@@ -21,14 +21,14 @@ const adminUsers = function (request, response) {
                 message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
             })
             console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
-            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'));
+            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'), { page: 'users' });
 
         } else if (result.length) {
-            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description });
+            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, page: 'users' });
 
         }
         else {
-            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'));
+            response.render(path.join(path.resolve("."), '/public/templates/admin/manage-users.html'), { page: 'users'});
         }
     });
 }

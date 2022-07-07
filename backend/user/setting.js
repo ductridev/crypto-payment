@@ -26,7 +26,7 @@ const setting = function (request, response) {
 
                 }
                 else {
-                    response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { result: _result });
+                    response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { result: _result, page: 'setting' });
                 }
             });
 
@@ -40,7 +40,7 @@ const setting = function (request, response) {
                     console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
                 }
                 else {
-                    response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, result: _result });
+                    response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { icon: result[0].iconURI, title: result[0].mp_title, description: result[0].mp_description, result: _result, page: 'setting' });
                 }
             });
         }
@@ -54,7 +54,7 @@ const setting = function (request, response) {
                     console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
                 }
                 else {
-                    response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { result: _result });
+                    response.render(path.join(path.resolve("."), '/public/templates/user/setting.html'), { result: _result, page: 'setting' });
                 }
             });
         }

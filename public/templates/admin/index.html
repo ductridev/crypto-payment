@@ -5,23 +5,52 @@
     <link rel="icon" href="{{#icon}}{{icon}}{{/icon}}{{^icon}}../public/favicon.ico{{/icon}}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="{{#description}}{{description}}{{/description}}{{^description}}DAG Crypto Bridge for easy payment{{/description}}" />
+    <meta name="description"
+        content="{{#description}}{{description}}{{/description}}{{^description}}DAG Crypto Bridge for easy payment{{/description}}" />
     <link rel="stylesheet" href="../public/templates/admin/admin.css">
     <title>{{#title}}{{title}}{{/title}}{{^title}}Crypto Payment{{/title}}</title>
 </head>
 
-<body>
-    <div id="top-navigation"></div>
-    <div id="root">
-        <h1>Hello Admin</h1>
-        <div>{{#error}}{{error}}{{/error}}{{^error}}{{/error}}</div>
+<body aria-page="{{#page}}{{page}}{{/page}}{{^page}}{{/page}}">
+    <div class="column-container">
+        <div id="sidebar"></div>
+        <div class="row">
+            <div class="top-navigation" id="top-navigation"></div>
+            <div class="main" id="root">
+                <h1>Hello Admin</h1>
+                <div>{{#error}}{{error}}{{/error}}{{^error}}{{/error}}</div>
+            </div>
+        </div>
     </div>
 </body>
 <footer>
-    <script script-src='self' src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script script-src='self' src="https://code.jquery.com/jquery-3.6.0.min.js"
+        integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <script>
         $(function () {
             $("#top-navigation").load("../public/templates/admin/navigation.html");
+        });
+        $(function () {
+            $("#sidebar").load("../public/templates/admin/sidebar.html");
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+            var page = document.body.getAttribute('aria-page').toString();
+            setTimeout(() => {
+                document.getElementsByClassName('topnav')[0].childNodes.forEach(element => {
+                    if (element.id === page) {
+                        element.classList.add('active');
+                    }
+                });
+                document.getElementsByClassName('sidebar-main')[0].childNodes[5].childNodes.forEach(element => {
+                    element.childNodes.forEach(elem => {
+                        if (elem.id === page) {
+                            elem.classList.add('active');
+                            elem.classList.remove('text-white');
+                            elem.setAttribute('aria-current', 'page');
+                        }
+                    });
+                });
+            }, 500);
         });
     </script>
 </footer>
