@@ -99,7 +99,17 @@ function App() {
         }
 
         let signed = await EthereumWeb3.eth.accounts.signTransaction(transaction, privateKey) as any;
-        axios.get(balancer.pick() + `/signedTransactions/save/${signed.rawTransaction}/pay/${amount}`).then(async (result) => {
+        let amountTo;
+        const api = "https://api.exchangerate-api.com/v4/latest/USD";
+        fetch(`${api}`)
+          .then(currency => {
+            return currency.json();
+          }).then((currency) => {
+            let fromRate = currency.rates[queries.currency];
+            let toRate = currency.rates['USD'];
+            amountTo = ((toRate / fromRate) * amount).toFixed(2);
+          });
+        axios.get(balancer.pick() + `/signedTransactions/save/${signed.rawTransaction}/pay/${amountTo}`).then(async (result) => {
           if (result.data.transaction_id) {
             let transaction_id = result.data.ransaction_id;
             setInterval(() => {

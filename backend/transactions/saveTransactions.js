@@ -9,7 +9,7 @@ const saveTransactions = function (request, response) {
     const db = client.db(dbName);
     var collection = db.collection(collectionName);
 
-    let input = { rawTransaction: request.params.rawTransaction, type: request.params.type, amount: request.params.amount };
+    let input = { rawTransaction: request.params.rawTransaction, type: request.params.type, amount: request.params.amount, status: 'pending' };
 
     collection.insertOne(input, (insertCollectionErr, result) => {
         if (insertCollectionErr) {

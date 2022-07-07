@@ -2,6 +2,7 @@ var cron = require('node-cron');
 const https = require('https');
 const Web3 = require('web3');
 const { RelayProvider } = require('@opengsn/provider');
+const ObjectId = require('mongodb').ObjectId; 
 
 var mongoDB = require('./db');
 const paymasterAddress = require('../build/gsn/Paymaster.json').address;
@@ -108,7 +109,7 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
     var collection = db.collection(collectionName);
     var collection1 = db.collection(collectionName1);
 
-    collection.find().toArray(function (queryCollectionErr, result) {
+    collection.find({status: 'pending'}).toArray(function (queryCollectionErr, result) {
 
         if (queryCollectionErr) {
 
@@ -118,7 +119,7 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
             for (let i = 0; i < result.length; i++) {
                 batch.add(
                     EthereumWeb3.eth.sendSignedTransaction(result[i].rawTransaction).on('receipt', (_result) => {
-                        collection1.insertOne({ receipt: _result.transactionHash, transaction_id: result[i]._id }, (insertCollectionErr, __result) => {
+                        collection1.insertOne({ receipt: _result.transactionHash, amount: result[i].amount, transaction_id: result[i]._id, status: _result.status ? 'success' : 'failed' }, (insertCollectionErr, __result) => {
                             if (insertCollectionErr) {
                                 console.log(`Unable to insert document to the collection "${collectionName}". Error: ${insertCollectionErr}`);
                             } else {
@@ -137,6 +138,13 @@ const sendBatchTransaction = cron.schedule("*/2 * * * *", async () => {
                                 // }
                             }
                         })
+                        collection.updateOne({_id: new ObjectId(result[i]._id)}, {$set: {status: _result.status ? 'success' : 'failed'}}).then((obj) => {
+                            if (obj) {
+                                console.log('Updated - ', obj);
+                            } else {
+                                console.log(`No document found with defined "${result[i]._id}" criteria!`);
+                            }
+                        });
                     })
                 );
             }
