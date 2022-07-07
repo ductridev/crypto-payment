@@ -88,19 +88,12 @@ else {
     /* handle middlewares*/
     app.use(timeout('5s'));
     app.use(helmet());
-    // app.use(haltOnTimedout());
     app.use(compression());
-    // app.use(haltOnTimedout());
     app.use(bodyParser.json());
-    // app.use(haltOnTimedout());
     app.use(bodyParser.urlencoded({ extended: false }));
-    // app.use(haltOnTimedout());
     app.use(cors(corsOptions));
-    // app.use(haltOnTimedout());
     app.use(cookieParser());
-    // app.use(haltOnTimedout());
     app.use(responseTime());
-    // app.use(haltOnTimedout());
     app.use(session({
         store: new RedisStore({ client: redisClient }),
         secret: 'dag crypto brigde',
@@ -110,18 +103,13 @@ else {
             maxAge: 1*60*60*1000
         }
     }))
-    // app.use(haltOnTimedout());
     app.use(express.static(path.join(path.resolve("."), '/'), {
         extensions: ['html', 'htm'],
     }));
-    // app.use(haltOnTimedout());
     app.use(function (req, res, next) {
         res.setHeader("Content-Security-Policy", "script-src * 'unsafe-inline'; style-src *; default-src *; media-src *;");
         return next();
     });
-    function haltOnTimedout(request, response, next) {
-        if (!request.timedout) next()
-    }
 
     app.get('/', function (request, response) {
         response.send('Silence is golden');
