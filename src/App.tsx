@@ -42,7 +42,7 @@ function App() {
   });
 
   let EthereumBiconomy = new Biconomy(window.ethereum, {
-    apiKey: "0wesR0B52.148547c8-9806-4856-ba97-6e034e86a72f",
+    apiKey: process.env.ETH_BICONOMY_APIKEY,
     debug: true
   });
 
