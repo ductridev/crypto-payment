@@ -10,6 +10,8 @@ import DeviceInfo from 'react-native-device-info';
 import CryptoAccount from 'send-crypto';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
+import { Biconomy } from "@biconomy/mexa";
+import Countdown from 'react-countdown';
 
 const proxies = [
   'http://localhost:5000',
@@ -39,7 +41,14 @@ function App() {
     setOs(baseOs);
   });
 
-  const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
+  let EthereumBiconomy = new Biconomy(window.ethereum, {
+    apiKey: "0wesR0B52.148547c8-9806-4856-ba97-6e034e86a72f",
+    debug: true
+  });
+
+  let EthereumWeb3 = new Web3(EthereumBiconomy);
+
+  // const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
 
   const config = {
     networkId: "testnet",
@@ -146,7 +155,7 @@ function App() {
             return (
               <div className='custom-ui'>
                 <h1>Are you sure?</h1>
-                <p>You want to delete this file?</p>
+                <p>Continue process this payment?</p>
                 <button onClick={onClose}>Cancel</button>
                 <button
                   onClick={() => {
@@ -173,6 +182,20 @@ function App() {
       "BCH"
     );
   }
+
+  EthereumBiconomy.onEvent(EthereumBiconomy.READY, () => {
+  }).onEvent(EthereumBiconomy.ERROR, (error: any, message: any) => {
+    return (
+      <div>
+        <script>
+          Something error! Refresh after <Countdown
+            date={Date.now() + 5000}
+            onComplete={() => { window.location.reload(); }}
+          />
+        </script>
+      </div>
+    );
+  });
 
   return (
     <div>
