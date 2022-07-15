@@ -24,7 +24,7 @@ const login = function (request, response) {
                     level: 'error',
                     message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
                 })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                logger.error(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
                 if (request.query.error && request.query.login) {
                     response.render(path.join(path.resolve("."), '/public/templates/user/login.html'), { error: 'Login credential is wrong. Please try again!' });
                 }
@@ -65,7 +65,7 @@ const loginSubmit = function (request, response) {
                 level: 'error',
                 message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
             })
-            console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+            logger.error(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
             response.redirect('/user/login?error=true&login=true');
             request.session.LoginUser = false;
             request.session.save();

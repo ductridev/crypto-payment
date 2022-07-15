@@ -22,7 +22,7 @@ const adminIndex = async function (request, response) {
                 level: 'error',
                 message: `Error in query collection ${dbName}.${"Setting"}. Error: ${queryCollectionErr}`
             })
-            console.log(`Unable to query document(s) on the collection "${"Setting"}". Error: ${queryCollectionErr}`);
+            logger.error(`Unable to query document(s) on the collection "${"Setting"}". Error: ${queryCollectionErr}`);
 
         } else if (result.length) {
             iconURI = result[0].iconURI;

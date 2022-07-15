@@ -24,7 +24,7 @@ const register = function (request, response) {
                     level: 'error',
                     message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
                 })
-                console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                logger.error(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
                 if (request.query.error && request.query.accountExist) {
                     response.render(path.join(path.resolve("."), '/public/templates/user/register.html'), { error: true, accountExist: 'This email is already registered for another account. Please check again your register email!' });
                 }
@@ -73,7 +73,7 @@ const registerSubmit = function (request, response) {
                 level: 'error',
                 message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
             })
-            console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+            logger.error(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
             response.redirect('/register?error=true&unknowError=true');
         } else if (result.length > 0) {
             response.redirect('/register?error=true&accountExist=true');
@@ -85,7 +85,7 @@ const registerSubmit = function (request, response) {
                         level: 'error',
                         message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
                     })
-                    console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+                    logger.error(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
                     response.redirect('/register?error=true&unknowError=true');
                 }
                 else {

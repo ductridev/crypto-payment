@@ -73,7 +73,7 @@ class DAG {
                 return docs[0];
             }
             else {
-                console.log(err);
+                logger.error(err);
                 this.getMerkelRoot();
             }
         });
@@ -87,7 +87,7 @@ class DAG {
                 return docs[0];
             }
             else {
-                console.log(err);
+                logger.error(err);
                 this.getPreviousBlock();
             }
         });
@@ -104,7 +104,7 @@ class DAG {
                 }
             }
             else {
-                console.log(err);
+                logger.error(err);
                 this.getLastVerifiedBlock();
             }
         });

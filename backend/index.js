@@ -16,7 +16,6 @@ const RedisStore = require("connect-redis")(session);
 const { createClient } = require("redis");
 
 const mongoDB = require('./db');
-const logger = require('./utils/logger');
 const path = require('path');
 const dotenv = require('dotenv');
 
@@ -36,6 +35,8 @@ const {adminUsers} = require("./admin/users");
 const {adminAuthenticate, userAuthenticate} = require('./utils/authencate');
 const {getHash} = require('./transactions/getHash');
 const {saveTransactions} = require('./transactions/saveTransactions');
+const {exchange} = require('./utils/exchange');
+const {getPayment} = require('./utils/getPayment');
 
 let redisClient = createClient({ legacyMode: true });
 redisClient.connect().catch(console.error);
@@ -139,6 +140,9 @@ else {
 
     app.get('/signedTransactions/getHash/:transaction_id', getHash);
     app.get('/signedTransactions/save/:rawTransaction/:type/:amount', saveTransactions);
+
+    app.get('/exchange/:token/:currency/:amount', exchange);
+    app.get('/getPayment/:paymentID', getPayment);
 
     // Temporary disabled
     // app.get('/coinbase/auth/', function (request, response) {

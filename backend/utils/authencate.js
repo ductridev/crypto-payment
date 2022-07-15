@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const adminAuthenticate = function(request, response, next) {
     if (request.session.LoginAdmin === true) {
         next();
@@ -7,7 +8,7 @@ const adminAuthenticate = function(request, response, next) {
     }
 }
 const userAuthenticate = function(request, response, next) {
-    console.log(request.session);
+    logger.error(request.session);
     if (request.session.LoginUser === true) {
         next();
     }

@@ -20,7 +20,7 @@ const adminSetting = function (request, response) {
                 level: 'error',
                 message: `Error in query collection ${dbName}.${collectionName}. Error: ${queryCollectionErr}`
             })
-            console.log(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
+            logger.error(`Unable to query document(s) on the collection "${collectionName}". Error: ${queryCollectionErr}`);
             response.render(path.join(path.resolve("."), '/public/templates/admin/setting.html'), { page: 'setting' });
 
         } else if (result.length) {
