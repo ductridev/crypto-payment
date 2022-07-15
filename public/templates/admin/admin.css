@@ -69,6 +69,7 @@ h5 {
 .info-header{
     padding: 8px 8px;
     border-bottom: 1px solid white;
+    opacity: 0.6;
 }
 .info-body{
     padding: 0px 8px;

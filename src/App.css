@@ -34,6 +34,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -49,4 +50,11 @@ body {
 .cursor {
   width: 30px;
   transition: all ease;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;  
+  height: 100%;
 }
