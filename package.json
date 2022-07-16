@@ -5,7 +5,7 @@
   "dependencies": {
     "@biconomy/mexa": "^2.0.34",
     "@opengsn/cli": "^2.2.6",
-    "@portis/web3": "^4.0.7",
+    "@portis/web3": "^4.1.0",
     "@stardust-collective/dag4": "^1.1.13",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^14.2.1",
