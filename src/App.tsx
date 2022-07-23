@@ -1,18 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import './App.css';
+import React, { useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { P2cBalancer } from 'load-balancers';
-import { getQueryParams } from './utils/functions';
 import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils } from "near-api-js";
-import Web3 from 'web3';
 import axios from 'axios';
-import DeviceInfo from 'react-native-device-info';
-import CryptoAccount from 'send-crypto';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
-import { EthereumBiconomy } from './ether/index';
-import Countdown from 'react-countdown';
 import { SpinnerRoundFilled } from 'spinners-react';
+import { useStateIfMounted } from "use-state-if-mounted";
+import { EventEmitter } from 'events';
+import { useResourceMonitor } from 'react-resource-monitor';
+import { ethers } from "ethers";
+import { Biconomy } from "@biconomy/mexa";
+import { BrowserView, AndroidView, IOSView } from 'react-device-detect';
+
+import './App.css';
+import { getQueryParams } from './utils/functions';
 
 const proxies = [
   'http://localhost:5000',
@@ -22,6 +24,7 @@ const proxies = [
 ];
 declare var window: any;
 var queries: any = {};
+let biconomy: any;
 
 // Initializes the Power of 2 Choices (P2c) Balancer with ten proxies.
 const balancer = new P2cBalancer(proxies.length);
@@ -29,29 +32,23 @@ const balancer = new P2cBalancer(proxies.length);
 const keyStore = new keyStores.BrowserLocalStorageKeyStore();
 
 function App() {
-  const [os, setOs] = useState("");
-  const [loading, setLoading] = useState(false);
+  useResourceMonitor();
 
-  const [wallet, setWallet] = useState("MetaMask");
-  const [privateKey, setPrivateKey] = useState("");
-  const [transactionHash, setTransactionHash] = useState("");
+  const [loading, setLoading] = useStateIfMounted(true);
+  const isMounted = useRef(true);
 
-  const [buyerAddress, setBuyerAddress] = useState("");
-  const [sellerAddress, setSellerAddress] = useState("");
-  const [amount, setAmount] = useState(0);
-  const [token, setToken] = useState("ETH");
-  const [currency, setCurrency] = useState("USD");
-  const [paymentStatus, setPaymentStatus] = useState("pending");
-  const [amountTo, setAmountTo] = useState("");
-  const [paymentExist, setPaymentExist] = useState(false);
+  const [wallet, setWallet] = useStateIfMounted("MetaMask");
+  const [transactionHash, setTransactionHash] = useStateIfMounted("");
+  const [transactionStatus, setTransactionStatus] = useStateIfMounted("");
 
-  DeviceInfo.getBaseOs().then((baseOs) => {
-    setOs(baseOs);
-  });
-
-  // let EthereumWeb3 = new Web3(EthereumBiconomy);
-
-  const EthereumWeb3 = new Web3(process.env.REACT_APP_INFURA_API || '');
+  const [buyerAddress, setBuyerAddress] = useStateIfMounted("");
+  const [sellerAddress, setSellerAddress] = useStateIfMounted("");
+  const [amount, setAmount] = useStateIfMounted(0);
+  const [token, setToken] = useStateIfMounted("ETH");
+  const [currency, setCurrency] = useStateIfMounted("USD");
+  const [paymentStatus, setPaymentStatus] = useStateIfMounted("pending");
+  const [amountTo, setAmountTo] = useStateIfMounted("");
+  const [paymentExist, setPaymentExist] = useStateIfMounted(false);
 
   const config = {
     networkId: "testnet",
@@ -66,49 +63,63 @@ function App() {
   queries = getQueryParams();
 
   useEffect(() => {
-    axios.get(proxies[balancer.pick()] + `/getPayment/${queries.paymentID}`).then(async (result) => {
-      setPaymentExist(result.data.exist);
+    console.log("mount");
+    isMounted.current = true;
 
-      if (result.data.exist === true) {
-        setAmount(result.data.amount);
-        setSellerAddress(result.data.sellerAddress);
-        setCurrency(result.data.currency);
-        setPaymentStatus(result.data.paymentStatus);
+    const newEvent = new EventEmitter();
+    newEvent.setMaxListeners(9000000000000);
 
-        const api = proxies[balancer.pick()] + `/exchange/${token}/${currency}/${amount}`;
+    if (typeof queries.paymentID !== 'undefined' && queries.paymentID !== "") {
+      axios.get(proxies[balancer.pick()] + `/getPayment/${queries.paymentID}`).then(async (result) => {
+        setPaymentExist(result.data.exist);
 
-        axios.get(`${api}`).then(async (result) => {
-          setAmountTo(result.data.amountTo);
-        })
-      }
-      else {
+        if (result.data.exist === true) {
+          setAmount(result.data.amount);
+          setSellerAddress(result.data.sellerAddress);
+          setCurrency(result.data.currency);
+          setPaymentStatus(result.data.paymentStatus);
 
-      }
-    });
+          const api = proxies[balancer.pick()] + `/exchange/${token}/${result.data.currency}/${result.data.amount}`;
 
-    // EthereumBiconomy.onEvent(EthereumBiconomy.READY, () => {
-    // }).onEvent(EthereumBiconomy.ERROR, (error: any, message: any) => {
-    //   return (
-    //     <div>
-    //       <script>
-    //         Something error! Refresh after <Countdown
-    //           date={Date.now() + 5000}
-    //           onComplete={() => { window.location.reload(); }}
-    //         />
-    //       </script>
-    //     </div>
-    //   );
-    // });
+          axios.get(`${api}`).then(async (result) => {
+            setAmountTo(result.data.amountTo);
+          })
+        }
+        else {
 
-    setLoading(true);
-  }, [amount, currency, token]);
+        }
+      });
+
+      const initBiconomy = async () => {
+        biconomy = new Biconomy(window.ethereum, {
+          apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
+          debug: true,
+          contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
+        });
+        await biconomy.init();
+        setLoading(false);
+      };
+      initBiconomy();
+    }
+    else {
+      setLoading(false);
+    }
+  }, [amount, currency, setAmount, setAmountTo, setCurrency, setLoading, setPaymentExist, setPaymentStatus, setSellerAddress, token]);
+
+  useEffect(() => () => {
+    isMounted.current = false;
+    console.log("Unmounted");
+  }, []);
 
   const connectWallet = async () => {
     if (wallet === "MetaMask") {
       if (typeof window.ethereum !== 'undefined') {
         console.log('MetaMask Wallet is installed!');
+        await window.ethereum.enable()
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        setBuyerAddress(accounts[0]);
+        if (isMounted.current) {
+          setBuyerAddress(accounts[0]);
+        }
       }
       else {
         alert("Please install MetaMask Wallet");
@@ -118,7 +129,9 @@ function App() {
       if (typeof window.BinanceChain !== 'undefined') {
         console.log('Binance Wallet is installed!');
         const accounts = await window.BinanceChain.request({ method: 'eth_requestAccounts' });
-        setBuyerAddress(accounts[0]);
+        if (isMounted.current) {
+          setBuyerAddress(accounts[0]);
+        }
       }
       else {
         alert("Please install Binance Wallet");
@@ -131,7 +144,10 @@ function App() {
         window.NEARwallet.requestSignIn();
       }
       else {
-        setBuyerAddress(window.NEARwallet.getAccountId());
+        let accountID = window.NEARwallet.getAccountId();
+        if (isMounted.current) {
+          setBuyerAddress(accountID);
+        }
 
         let senderNEARAccount = await window.near.account(window.NEARwallet.getAccountId());
         window.senderNEARAccount = senderNEARAccount;
@@ -140,44 +156,73 @@ function App() {
   }
 
   const payBill = async () => {
-    const api = proxies[balancer.pick()] + `/exchange/${token}/${currency}/${amount}`;
-
-    axios.get(`${api}`).then(async (result) => {
-      setAmountTo(result.data.amountTo);
-    })
-
     if (token === "ETH") {
-      EthereumWeb3.eth.getTransactionCount(buyerAddress).then(async (txCount) => {
+      const provider = await biconomy.provider;
+      const contractInstance = new ethers.Contract(
+        process.env.REACT_APP_CONTRACT_ADDRESS,
+        process.env.REACT_APP_CONTRACT_ABI,
+        biconomy.ethersProvider
+      );
 
-        let transaction = {
-          nonce: txCount,
-          from: buyerAddress,
-          gasPrice: EthereumWeb3.utils.toHex(1e9),
-          gas: EthereumWeb3.utils.toHex(25000),
-          to: queries.sellerAddress,
-          value: EthereumWeb3.utils.toHex(EthereumWeb3.utils.toWei(amountTo.toString()))
-        }
+      let { data } = await contractInstance.populateTransaction.transfer(sellerAddress);
 
-        let signed = await EthereumWeb3.eth.accounts.signTransaction(transaction, privateKey) as any;
+      console.log(data);
 
-        axios.get(proxies[balancer.pick()] + `/signedTransactions/save/${signed.rawTransaction}/pay/${amountTo}`).then(async (result) => {
-          if (result.data.transaction_id) {
-            let transaction_id = result.data.ransaction_id;
-            setInterval(() => {
-              axios.get(proxies[balancer.pick()] + '/signedTransactions/getHash/' + transaction_id).then(async (result) => {
-                setTransactionHash(result.data.transactionHash);
-              })
-            }, 1000);
-          }
-          else if (result.data.error) {
-            alert(result.data.error);
-          }
+      let txParams = {
+        from: buyerAddress,
+        to: process.env.REACT_APP_CONTRACT_ADDRESS,
+        contractAddress: process.env.REACT_APP_CONTRACT_ADDRESS,
+        data: data,
+        value: ethers.utils.parseEther(Number(amountTo).toFixed(18)).toHexString(),
+        signatureType: "EIP712_SIGN"
+      };
 
-        }).catch(async (err) => {
-          console.log(err);
-        })
-      })
+      await provider.send("eth_sendTransaction", [txParams]);
 
+      // Listen to transaction updates:
+      biconomy.on("txHashGenerated", (data: { transactionId: string; transactionHash: string; }) => {
+        console.log(data);
+        setTransactionHash(`tx hash ${data.transactionHash}`);
+      });
+
+      biconomy.on("txMined", (data: { msg: string; id: string; hash: string; receipt: string }) => {
+        console.log(data);
+
+        setTransactionStatus('Your payment processed');
+        setTransactionHash(`${data.hash}`);
+      });
+
+      biconomy.on("onError", (data: { error: any; transactionId: string }) => {
+        console.log(data);
+      });
+
+      biconomy.on("txHashChanged", (data: { transactionId: string, transactionHash: string }) => {
+        console.log(data);
+      });
+
+      // axios.get(proxies[balancer.pick()] + `/signedTransactions/save/${data.transactionHash}/pay/${amount}/${data.gasUsed}/${data.status}`).then(async (result) => {
+      // }).catch(async (err) => {
+      //   console.log(err);
+      // });
+
+      // if (isMounted.current) {
+      //   if (receipt.status) {
+      //     setTransactionStatus('Your payment processed');
+      //     setTransactionHash(receipt.transactionHash);
+      //   }
+      //   else if (!receipt.status) {
+      //     setTransactionStatus('Your payment have error! Please contact to our support at support@estar-solutions.com');
+      //   }
+      // }
+
+      // const txParams = {
+      //   from: buyerAddress,
+      //   to: sellerAddress,
+      //   value: ethers.utils.parseEther(Number(amountTo).toFixed(18)).toHexString(),
+      //   nonce: await EthereumWeb3.getTransactionCount(buyerAddress, "latest"),
+      //   gasLimit: ethers.utils.hexlify(25000),
+      //   gasPrice: await (await EthereumWeb3.getGasPrice()).toNumber(),
+      // }
     }
     else if (token === "NEAR") {
 
@@ -212,25 +257,24 @@ function App() {
       });
     }
     else if (token === "BTC") {
-      setAmountTo(amountTo);
+      if (isMounted.current) {
+
+      }
     }
   }
 
   const handleClickProcess = async () => {
-    const account = new CryptoAccount(privateKey);
-
-    await account.send(
-      "bitcoincash:qp3wjpa3tjlj042z2wv7hahsldgwhwy0rq9sywjpyy",
-      amountTo,
-      "BCH"
-    );
+    axios.get(proxies[balancer.pick()] + `/bch/send/${sellerAddress}/${window.privateKey}/${amountTo}`).then(async (result) => {
+    }).catch(async (err) => {
+      console.log(err);
+    });
   }
 
   return (
     <div className='container'>
-      {!loading
+      {loading
         ?
-        <SpinnerRoundFilled enabled={!loading} color={"#3f5063"} />
+        <SpinnerRoundFilled enabled={loading} color={"#3f5063"} />
         :
         <div className='main'>
           {paymentExist === false
@@ -243,21 +287,27 @@ function App() {
                 <div className="App">
                   <label htmlFor="walletSelection">Select a wallet to connect so we can be sure that you are the owner of the wallet address. Please make sure you have installed wallet!</label><br />
                   <select id="walletSelection" onChange={(event) => {
-                    setBuyerAddress('');
-                    setWallet(event.target.value);
-                    if (event.target.value === 'Bitcoin') {
-                      setToken('BTC');
+                    if (isMounted.current) {
+                      setBuyerAddress('');
+                      setWallet(event.target.value);
+                      if (event.target.value === 'Bitcoin') {
+                        setToken('BTC');
+                      }
+                      else if (event.target.value === 'MetaMask') {
+                        setToken('ETH');
+                      }
+                      else if (event.target.value === 'NEAR') {
+                        setToken('NEAR');
+                      }
+                      else if (event.target.value === 'Binance') {
+                        setToken('ETH');
+                      }
+                      const api = proxies[balancer.pick()] + `/exchange/${token}/${currency}/${amount}`;
+
+                      axios.get(`${api}`).then(async (result) => {
+                        setAmountTo(result.data.amountTo);
+                      })
                     }
-                    else if (event.target.value === 'MetaMask') {
-                      setToken('ETH');
-                    }
-                    else if (event.target.value === 'NEAR') {
-                      setToken('NEAR');
-                    }
-                    else if (event.target.value === 'Binance') {
-                      setToken('ETH');
-                    }
-                    setAmountTo("");
                   }} value={wallet}>
                     <option value="MetaMask">MetaMask</option>
                     <option value="Binance">Binance</option>
@@ -266,9 +316,7 @@ function App() {
                   </select>
                   {wallet === 'Bitcoin'
                     ? <>
-                      {os
-                        ? <HelpBitcoinWallet os={os} />
-                        : null}
+                      <HelpBitcoinWallet />
                     </>
                     :
                     <>
@@ -280,8 +328,8 @@ function App() {
                     wallet === 'MetaMask'
                       ? <div>
                         <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
-                          <input placeholder='Enter private key here' type={'password'} onChange={(e) => {
-                            setPrivateKey(e.target.value);
+                          <input placeholder='Enter private key here' type={'password'} onBlur={(e) => {
+                            window.privateKey = e.target.value;
                           }} />
                         </p>
                         <a href='https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-Export-an-Account-Private-Key'>Check here if you don't know how to get private key of address.</a>
@@ -292,8 +340,14 @@ function App() {
                   <p>Billing amount : {amount} {currency} ~ {amountTo} {token}</p>
                   <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
                   <select id='tokenSelection' onChange={(e) => {
-                    setToken(e.target.value);
-                    setAmountTo("");
+                    if (isMounted.current) {
+                      const api = proxies[balancer.pick()] + `/exchange/${e.target.value}/${currency}/${amount}`;
+
+                      axios.get(`${api}`).then(async (result) => {
+                        setToken(e.target.value);
+                        setAmountTo(result.data.amountTo);
+                      })
+                    }
                   }}>
                     {wallet === 'Bitcoin'
                       ? <>
@@ -338,7 +392,11 @@ function App() {
 
                       <p>Or scan QR code</p>
                       <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
-
+                      {
+                        transactionStatus !== ""
+                          ? <p>{transactionStatus}</p>
+                          : null
+                      }
                       {
                         transactionHash !== ""
                           ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
@@ -354,7 +412,11 @@ function App() {
 
                       <p>Or scan QR code</p>
                       <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
-
+                      {
+                        transactionStatus !== ""
+                          ? <p>{transactionStatus}</p>
+                          : null
+                      }
                       {
                         transactionHash !== ""
                           ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
@@ -368,7 +430,9 @@ function App() {
                     <>
                       {token === 'BCH'
                         ?
-                        <button onClick={payBill}>Process payment</button>
+                        <>
+                          <button onClick={payBill}>Process payment</button>
+                        </>
                         : null
                       }
                     </>
@@ -410,24 +474,18 @@ function App() {
   );
 }
 
-function HelpBitcoinWallet(props: {
-  os: string;
-}) {
+function HelpBitcoinWallet() {
   return (
     <div>
-      {
-        props.os === 'Windows'
-          ? <p>Check all Bitcoin Wallet for Windows is available at <a href='https://bitcoin.org/en/wallets/desktop/windows/?step=5&platform=windows'>here</a></p>
-          : null
-      }
-      {props.os === 'Android'
-        ? <p>Check all Bitcoin Wallet for Android is available at <a href='https://bitcoin.org/en/wallets/mobile/android?step=5&platform=android'>here</a></p>
-        : null
-      }
-      {props.os === 'iOS'
-        ? <p>Check all Bitcoin Wallet for iOS is available at <a href='https://bitcoin.org/en/wallets/mobile/ios/?step=5&platform=ios'>here</a></p>
-        : null
-      }
+      <BrowserView>
+        <p>Check all Bitcoin Wallet for Windows is available at <a href='https://bitcoin.org/en/wallets/desktop/windows/?step=5&platform=windows'>here</a></p>
+      </BrowserView>
+      <AndroidView>
+        <p>Check all Bitcoin Wallet for Android is available at <a href='https://bitcoin.org/en/wallets/mobile/android?step=5&platform=android'>here</a></p>
+      </AndroidView>
+      <IOSView>
+        <p>Check all Bitcoin Wallet for iOS is available at <a href='https://bitcoin.org/en/wallets/mobile/ios/?step=5&platform=ios'>here</a></p>
+      </IOSView>
     </div>
   )
 }
@@ -438,7 +496,7 @@ function QRURI(props: {
   message: string;
   label: string;
 }) {
-  const [showURI, setShowURI] = useState(false);
+  const [showURI, setShowURI] = useStateIfMounted(false);
 
   return (
     <div>
