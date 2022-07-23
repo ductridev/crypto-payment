@@ -162,16 +162,13 @@ pragma solidity >=0.4.22 <0.9.0;
 
 
 contract Transaction is ERC2771Context, Ownable {
-    event Bought(uint256 amount);
-    event Sold(uint256 amount);
-
     address private _trustedForwarder;
 
     constructor(address trustedForwarder) ERC2771Context(_trustedForwarder){
         setTrustedForwarder(trustedForwarder);
     }
 
-    function setTrustedForwarder(address newTrustedForwarder) public {
+    function setTrustedForwarder(address newTrustedForwarder) public onlyOwner{
         _trustedForwarder = newTrustedForwarder;
     }
 
@@ -183,33 +180,25 @@ contract Transaction is ERC2771Context, Ownable {
         return forwarder == _trustedForwarder;
     }
 
-    // Function to receive Ether. msg.data must be empty
-    receive() external payable {}
+    mapping (address => uint256) public balances;
 
-    // Fallback function is called when msg.data is not empty
-    fallback() external payable {}
+    event LogDeposit(address sender, uint amount);
+    event LogWithdrawal(address receiver, uint amount);
+    event LogTransfer(address sender, address to, uint amount);
 
-    function getBalance() public view returns (uint) {
-        return address(this).balance;
-    }
+    // function withdraw(uint value) public payable returns(bool success) {
+    //     if(balances[msg.sender] < value) revert();
+    //     balances[msg.sender] -= value;
+    //     payable(msg.sender).transfer(value);
+    //     emit LogWithdrawal(msg.sender, value);
+    //     return true;
+    // }
 
-    function sendViaTransfer(address payable seller) public payable {
-        // This function is no longer recommended for sending Ether.
-        seller.transfer(msg.value);
-    }
-
-    function sendViaSend(address payable seller) public payable {
-        // Send returns a boolean value indicating success or failure.
-        // This function is not recommended for sending Ether.
-        bool sent = seller.send(msg.value);
-        require(sent, "Failed to send Ether");
-    }
-
-    function sendViaCall(address payable seller) public payable {
-        // Call returns a boolean value indicating success or failure.
-        // This is the current recommended method to use.
-        (bool sent, bytes memory data) = seller.call{value: msg.value}("");
-        require(sent, "Failed to send Ether");
+    function transfer(address payable to) public payable returns(bool success) {
+        emit LogDeposit(msg.sender, msg.value);
+        to.transfer(msg.value);
+        emit LogTransfer(msg.sender, to, msg.value);
+        return true;
     }
 
     function _msgSender() internal view override(Context, ERC2771Context) returns(address) {

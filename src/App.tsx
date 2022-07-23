@@ -94,7 +94,7 @@ function App() {
         biconomy = new Biconomy(window.ethereum, {
           apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
           contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
-          debug: true
+          debug: false
         });
         await biconomy.init();
         setLoading(false);
@@ -166,9 +166,9 @@ function App() {
         signer
       );
 
-      let { data } = await contractInstance.populateTransaction.transfer(sellerAddress);
+      // console.log(contractInstance);
 
-      console.log(data);
+      let { data } = await contractInstance.populateTransaction.transfer(sellerAddress);
 
       let txParams = {
         from: buyerAddress,
@@ -179,27 +179,29 @@ function App() {
         signatureType: "EIP712_SIGN"
       };
 
-      await provider.send("eth_sendTransaction", [txParams], process.env.REACT_APP_CONTRACT_ADDRESS);
+      let txHash = await provider.send("eth_sendTransaction", [txParams]);
+
+      // console.log(txHash);
 
       // Listen to transaction updates:
       biconomy.on("txHashGenerated", (data: { transactionId: string; transactionHash: string; }) => {
-        console.log(data);
+        console.log("txHashGenerated: " + data);
         setTransactionHash(`tx hash ${data.transactionHash}`);
       });
 
       biconomy.on("txMined", (data: { msg: string; id: string; hash: string; receipt: string }) => {
-        console.log(data);
+        console.log("txMined: " + data);
 
         setTransactionStatus('Your payment processed');
         setTransactionHash(`${data.hash}`);
       });
 
       biconomy.on("onError", (data: { error: any; transactionId: string }) => {
-        console.log(data);
+        console.log("onError: " + data);
       });
 
       biconomy.on("txHashChanged", (data: { transactionId: string, transactionHash: string }) => {
-        console.log(data);
+        console.log("txHashChanged: " + data);
       });
 
       // axios.get(proxies[balancer.pick()] + `/signedTransactions/save/${data.transactionHash}/pay/${amount}/${data.gasUsed}/${data.status}`).then(async (result) => {
