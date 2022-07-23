@@ -93,8 +93,8 @@ function App() {
       const initBiconomy = async () => {
         biconomy = new Biconomy(window.ethereum, {
           apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
-          debug: true,
           contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
+          debug: true
         });
         await biconomy.init();
         setLoading(false);
@@ -158,10 +158,12 @@ function App() {
   const payBill = async () => {
     if (token === "ETH") {
       const provider = await biconomy.provider;
+      const contractInterface = new ethers.utils.Interface(process.env.REACT_APP_CONTRACT_ABI);
+      const signer = new ethers.Wallet(window.privateKey, biconomy.ethersProvider);
       const contractInstance = new ethers.Contract(
         process.env.REACT_APP_CONTRACT_ADDRESS,
-        process.env.REACT_APP_CONTRACT_ABI,
-        biconomy.ethersProvider
+        contractInterface,
+        signer
       );
 
       let { data } = await contractInstance.populateTransaction.transfer(sellerAddress);
@@ -177,7 +179,7 @@ function App() {
         signatureType: "EIP712_SIGN"
       };
 
-      await provider.send("eth_sendTransaction", [txParams]);
+      await provider.send("eth_sendTransaction", [txParams], process.env.REACT_APP_CONTRACT_ADDRESS);
 
       // Listen to transaction updates:
       biconomy.on("txHashGenerated", (data: { transactionId: string; transactionHash: string; }) => {
