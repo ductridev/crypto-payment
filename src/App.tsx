@@ -17,10 +17,10 @@ import './App.css';
 import { getQueryParams } from './utils/functions';
 
 const proxies = [
-  'http://localhost:5000',
-  'http://localhost:5001',
-  'http://localhost:5002',
-  'http://localhost:5003',
+  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API1,
+  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API2,
+  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API3,
+  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API4,
 ];
 declare var window: any;
 var queries: any = {};
