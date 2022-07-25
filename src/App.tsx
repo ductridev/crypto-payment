@@ -92,16 +92,24 @@ function App() {
         console.log(error);
       });
 
-      const initBiconomy = async () => {
-        biconomy = new Biconomy(window.ethereum, {
-          apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
-          contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
-          debug: false
-        });
-        await biconomy.init();
-        setLoading(false);
-      };
-      initBiconomy();
+      if (typeof window.ethereum !== 'undefined') {
+        const initBiconomy = async () => {
+          biconomy = new Biconomy(window.ethereum, {
+            apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
+            contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
+            debug: false
+          });
+          await biconomy.init();
+          setLoading(false);
+        };
+        initBiconomy();
+      }
+      else {
+        if (typeof window.BinanceChain !== 'undefined') {}
+        else{
+          alert("Please install MetaMask Wallet or Binance Wallet");
+        }
+      }
     }
     else {
       setLoading(false);
