@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { P2cBalancer } from 'load-balancers';
+// import { P2cBalancer } from 'load-balancers';
 import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils } from "near-api-js";
 import axios from 'axios';
 import { confirmAlert } from 'react-confirm-alert';
@@ -16,18 +16,18 @@ import { BrowserView, AndroidView, IOSView } from 'react-device-detect';
 import './App.css';
 import { getQueryParams } from './utils/functions';
 
-const proxies = [
-  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API1,
-  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API2,
-  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API3,
-  process.env.REACT_APP_API_URL + ':' + process.env.REACT_APP_PORT_API4,
-];
+// const proxies = [
+//   process.env.REACT_APP_API_URL1,
+//   process.env.REACT_APP_API_URL2,
+//   process.env.REACT_APP_API_URL3,
+//   process.env.REACT_APP_API_URL4,
+// ];
 declare var window: any;
 var queries: any = {};
 let biconomy: any;
 
 // Initializes the Power of 2 Choices (P2c) Balancer with ten proxies.
-const balancer = new P2cBalancer(proxies.length);
+// const balancer = new P2cBalancer(proxies.length);
 
 const keyStore = new keyStores.BrowserLocalStorageKeyStore();
 
@@ -70,7 +70,7 @@ function App() {
     newEvent.setMaxListeners(9000000000000);
 
     if (typeof queries.paymentID !== 'undefined' && queries.paymentID !== "") {
-      axios.get(proxies[balancer.pick()] + `/getPayment/${queries.paymentID}`).then(async (result) => {
+      axios.get(process.env.REACT_APP_API_URL + `/getPayment/${queries.paymentID}`).then(async (result) => {
         setPaymentExist(result.data.exist);
 
         if (result.data.exist === true) {
@@ -79,7 +79,7 @@ function App() {
           setCurrency(result.data.currency);
           setPaymentStatus(result.data.paymentStatus);
 
-          const api = proxies[balancer.pick()] + `/exchange/${token}/${result.data.currency}/${result.data.amount}`;
+          const api = process.env.REACT_APP_API_URL + `/exchange/${token}/${result.data.currency}/${result.data.amount}`;
 
           axios.get(`${api}`).then(async (result) => {
             setAmountTo(result.data.amountTo);
@@ -88,6 +88,8 @@ function App() {
         else {
 
         }
+      }).catch(function (error) {
+        console.log(error);
       });
 
       const initBiconomy = async () => {
@@ -181,7 +183,7 @@ function App() {
 
       let txHash = await provider.send("eth_sendTransaction", [txParams]);
 
-      // console.log(txHash);
+      console.log(txHash);
 
       // Listen to transaction updates:
       biconomy.on("txHashGenerated", (data: { transactionId: string; transactionHash: string; }) => {
@@ -204,7 +206,7 @@ function App() {
         console.log("txHashChanged: " + data);
       });
 
-      // axios.get(proxies[balancer.pick()] + `/signedTransactions/save/${data.transactionHash}/pay/${amount}/${data.gasUsed}/${data.status}`).then(async (result) => {
+      // axios.get(process.env.REACT_APP_API_URL + `/signedTransactions/save/${data.transactionHash}/pay/${amount}/${data.gasUsed}/${data.status}`).then(async (result) => {
       // }).catch(async (err) => {
       //   console.log(err);
       // });
@@ -268,7 +270,7 @@ function App() {
   }
 
   const handleClickProcess = async () => {
-    axios.get(proxies[balancer.pick()] + `/bch/send/${sellerAddress}/${window.privateKey}/${amountTo}`).then(async (result) => {
+    axios.get(process.env.REACT_APP_API_URL + `/bch/send/${sellerAddress}/${window.privateKey}/${amountTo}`).then(async (result) => {
     }).catch(async (err) => {
       console.log(err);
     });
@@ -306,7 +308,7 @@ function App() {
                       else if (event.target.value === 'Binance') {
                         setToken('ETH');
                       }
-                      const api = proxies[balancer.pick()] + `/exchange/${token}/${currency}/${amount}`;
+                      const api = process.env.REACT_APP_API_URL + `/exchange/${token}/${currency}/${amount}`;
 
                       axios.get(`${api}`).then(async (result) => {
                         setAmountTo(result.data.amountTo);
@@ -345,7 +347,7 @@ function App() {
                   <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
                   <select id='tokenSelection' onChange={(e) => {
                     if (isMounted.current) {
-                      const api = proxies[balancer.pick()] + `/exchange/${e.target.value}/${currency}/${amount}`;
+                      const api = process.env.REACT_APP_API_URL + `/exchange/${e.target.value}/${currency}/${amount}`;
 
                       axios.get(`${api}`).then(async (result) => {
                         setToken(e.target.value);
@@ -395,7 +397,7 @@ function App() {
                       <button onClick={payBill}>Process payment</button>
 
                       <p>Or scan QR code</p>
-                      <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
+                      <QRCodeSVG value={process.env.REACT_APP_API_URL + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
                       {
                         transactionStatus !== ""
                           ? <p>{transactionStatus}</p>
@@ -415,7 +417,7 @@ function App() {
                       <button onClick={payBill}>Process payment</button>
 
                       <p>Or scan QR code</p>
-                      <QRCodeSVG value={proxies[balancer.pick()] + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
+                      <QRCodeSVG value={process.env.REACT_APP_API_URL + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
                       {
                         transactionStatus !== ""
                           ? <p>{transactionStatus}</p>
