@@ -159,13 +159,21 @@ abstract contract ERC2771Context is Context {
 
 pragma solidity >=0.4.22 <0.9.0;
 
-
-
-contract Transaction is ERC2771Context, Ownable {
+contract CP_Contract_Wallet is ERC2771Context, Ownable {
     address private _trustedForwarder;
+    mapping(address => uint) public balances;
+
+    event LogDeposit(address sender, uint amount);
+    event LogWithdrawal(address receiver, uint amount);
+    event LogTransfer(address sender, address to, uint amount);
 
     constructor(address trustedForwarder) ERC2771Context(_trustedForwarder){
         setTrustedForwarder(trustedForwarder);
+    }
+
+    receive() external payable{
+        emit LogDeposit(msg.sender, msg.value);
+        balances[msg.sender] += msg.value;
     }
 
     function setTrustedForwarder(address newTrustedForwarder) public onlyOwner{
@@ -176,41 +184,42 @@ contract Transaction is ERC2771Context, Ownable {
         return _trustedForwarder;
     }
 
-    function _isTrustedForwarder(address forwarder) public virtual view returns(bool) {
+    function _isTrustedForwarder(address forwarder) public virtual view returns(bool){
         return forwarder == _trustedForwarder;
     }
 
-    mapping (address => uint256) public balances;
-
-    event LogDeposit(address sender, uint amount);
-    event LogWithdrawal(address receiver, uint amount);
-    event LogTransfer(address sender, address to, uint amount);
-
-    // function withdraw(uint value) public payable returns(bool success) {
-    //     if(balances[msg.sender] < value) revert();
-    //     balances[msg.sender] -= value;
-    //     payable(msg.sender).transfer(value);
-    //     emit LogWithdrawal(msg.sender, value);
-    //     return true;
-    // }
-
-    function transfer(address payable to) public payable returns(bool success) {
-        emit LogDeposit(msg.sender, msg.value);
-        to.transfer(msg.value);
-        emit LogTransfer(msg.sender, to, msg.value);
+    function transfer(address from, address to, uint value) public returns(bool){
+        require(balances[from] >= value, "Balance of buyer must be enough!");
+        balances[from] -= value;
+        balances[to] += value;
+        emit LogTransfer(from, to, value);
         return true;
     }
 
-    function _msgSender() internal view override(Context, ERC2771Context) returns(address) {
-            return ERC2771Context._msgSender();
-    } 
-
-    function _msgData() internal view override(Context, ERC2771Context) returns(bytes memory) 
-    {
-            return ERC2771Context._msgData();
+    function withdraw(uint value) external payable returns(bool){
+        require(balances[_msgSender()] >= value, "Balance of seller must be enough!");
+        balances[_msgSender()] -= value;
+        payable(_msgSender()).transfer(value);
+        return true;
     }
 
-    function versionRecipient() external virtual view returns (string memory) {
+    function getBalance(address sender) external view returns(uint){
+        return balances[sender];
+    }
+
+    function getContractBalance() external view onlyOwner returns(uint){
+        return address(this).balance;
+    }
+
+    function _msgSender() internal view override(Context, ERC2771Context) returns(address){
+        return ERC2771Context._msgSender();
+    }
+
+    function _msgData() internal view override(Context, ERC2771Context) returns(bytes memory){
+        return ERC2771Context._msgData();
+    }
+
+    function versionRecipient() external virtual view returns (string memory){
         return "1";
     }
 }

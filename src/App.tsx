@@ -1,27 +1,23 @@
 import React, { useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 // import { P2cBalancer } from 'load-balancers';
-import { keyStores, connect as NEARconnect, WalletConnection, utils as NEARutils } from "near-api-js";
 import axios from 'axios';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 import { SpinnerRoundFilled } from 'spinners-react';
-import { useStateIfMounted } from "use-state-if-mounted";
-import { EventEmitter } from 'events';
-import { useResourceMonitor } from 'react-resource-monitor';
+import { useState } from "react";
 import { ethers } from "ethers";
 import { Biconomy } from "@biconomy/mexa";
 import { BrowserView, AndroidView, IOSView } from 'react-device-detect';
+import { utils as NEARutils } from "near-api-js";
 
 import './App.css';
 import { getQueryParams } from './utils/functions';
 
-// const proxies = [
-//   process.env.REACT_APP_API_URL1,
-//   process.env.REACT_APP_API_URL2,
-//   process.env.REACT_APP_API_URL3,
-//   process.env.REACT_APP_API_URL4,
-// ];
+import FundModal from './components/addFundModal';
+import ChooseWallet from './components/chooseWallet';
+import ResultModal from './components/resultTxHash';
+
 declare var window: any;
 var queries: any = {};
 let biconomy: any;
@@ -29,57 +25,45 @@ let biconomy: any;
 // Initializes the Power of 2 Choices (P2c) Balancer with ten proxies.
 // const balancer = new P2cBalancer(proxies.length);
 
-const keyStore = new keyStores.BrowserLocalStorageKeyStore();
-
 function App() {
-  useResourceMonitor();
 
-  const [loading, setLoading] = useStateIfMounted(true);
+  const [loading, setLoading] = useState(true);
   const isMounted = useRef(true);
+  const [showAddFundModal, setShowAddFundModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [showModalSelectWallet, setShowModalSelectWallet] = useState(false);
 
-  const [wallet, setWallet] = useStateIfMounted("MetaMask");
-  const [transactionHash, setTransactionHash] = useStateIfMounted("");
-  const [transactionStatus, setTransactionStatus] = useStateIfMounted("");
+  const [wallet, setWallet] = useState("");
+  const [resultTxHash, setResultTxHash] = useState("");
 
-  const [buyerAddress, setBuyerAddress] = useStateIfMounted("");
-  const [sellerAddress, setSellerAddress] = useStateIfMounted("");
-  const [amount, setAmount] = useStateIfMounted(0);
-  const [token, setToken] = useStateIfMounted("ETH");
-  const [currency, setCurrency] = useStateIfMounted("USD");
-  const [paymentStatus, setPaymentStatus] = useStateIfMounted("pending");
-  const [amountTo, setAmountTo] = useStateIfMounted("");
-  const [paymentExist, setPaymentExist] = useStateIfMounted(false);
+  const [transactionStatus, setTransactionStatus] = useState("");
+  const [balanceStatus, setBalanceStatus] = useState("You haven't checked your balance yet!");
 
-  const config = {
-    networkId: "testnet",
-    keyStore,
-    nodeUrl: "https://rpc.testnet.near.org",
-    walletUrl: "https://wallet.testnet.near.org",
-    helperUrl: "https://helper.testnet.near.org",
-    explorerUrl: "https://explorer.testnet.near.org",
-    headers: { test: "10" }
-  };
+  const [buyerAddress, setBuyerAddress] = useState("");
+
+  const [sellerAddress, setSellerAddress] = useState("");
+  const [amount, setAmount] = useState(0);
+  const [amountTo, setAmountTo] = useState(0);
+  const [fiatCurrency, setFiatCurrency] = useState("");
+  const [tokenCurrency, setTokenCurrency] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("pending");
+  const [paymentExist, setPaymentExist] = useState(false);
 
   queries = getQueryParams();
 
   useEffect(() => {
-    console.log("mount");
-    isMounted.current = true;
-
-    const newEvent = new EventEmitter();
-    newEvent.setMaxListeners(9000000000000);
-
     if (typeof queries.paymentID !== 'undefined' && queries.paymentID !== "") {
       axios.get(process.env.REACT_APP_API_URL + `/getPayment/${queries.paymentID}`).then(async (result) => {
         setPaymentExist(result.data.exist);
 
         if (result.data.exist === true) {
-          setAmount(result.data.amount);
           setSellerAddress(result.data.sellerAddress);
-          setCurrency(result.data.currency);
           setPaymentStatus(result.data.paymentStatus);
 
-          const api = process.env.REACT_APP_API_URL + `/exchange/${token}/${result.data.currency}/${result.data.amount}`;
+          setFiatCurrency(result.data.currency);
+          setAmount(parseFloat(result.data.amount));
+
+          const api = process.env.REACT_APP_API_URL + `/exchange/${tokenCurrency}/${fiatCurrency}/${amount}`;
 
           axios.get(`${api}`).then(async (result) => {
             setAmountTo(result.data.amountTo);
@@ -89,7 +73,6 @@ function App() {
 
         }
       }).catch(function (error) {
-        console.log(error);
       });
 
       if (typeof window.ethereum !== 'undefined') {
@@ -100,13 +83,13 @@ function App() {
             debug: false
           });
           await biconomy.init();
-          setLoading(false);
         };
         initBiconomy();
+        setLoading(false);
       }
       else {
-        if (typeof window.BinanceChain !== 'undefined') {}
-        else{
+        if (typeof window.BinanceChain !== 'undefined') { }
+        else {
           alert("Please install MetaMask Wallet or Binance Wallet");
         }
       }
@@ -114,166 +97,84 @@ function App() {
     else {
       setLoading(false);
     }
-  }, [amount, currency, setAmount, setAmountTo, setCurrency, setLoading, setPaymentExist, setPaymentStatus, setSellerAddress, token]);
+  }, [amount, amountTo, fiatCurrency, setLoading, setPaymentExist, setPaymentStatus, setSellerAddress, tokenCurrency]);
 
   useEffect(() => () => {
-    isMounted.current = false;
-    console.log("Unmounted");
-  }, []);
-
-  const connectWallet = async () => {
-    if (wallet === "MetaMask") {
-      if (typeof window.ethereum !== 'undefined') {
-        console.log('MetaMask Wallet is installed!');
-        await window.ethereum.enable()
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (isMounted.current) {
-          setBuyerAddress(accounts[0]);
-        }
-      }
-      else {
-        alert("Please install MetaMask Wallet");
-      }
-    }
-    else if (wallet === "Binance") {
-      if (typeof window.BinanceChain !== 'undefined') {
-        console.log('Binance Wallet is installed!');
-        const accounts = await window.BinanceChain.request({ method: 'eth_requestAccounts' });
-        if (isMounted.current) {
-          setBuyerAddress(accounts[0]);
-        }
-      }
-      else {
-        alert("Please install Binance Wallet");
-      }
-    }
-    else if (wallet === "NEAR") {
-      window.near = await NEARconnect(config);
-      window.NEARwallet = new WalletConnection(window.near, "dag_crypto_bridge");
-      if (!window.NEARwallet.isSignedIn()) {
-        window.NEARwallet.requestSignIn();
-      }
-      else {
-        let accountID = window.NEARwallet.getAccountId();
-        if (isMounted.current) {
-          setBuyerAddress(accountID);
-        }
-
-        let senderNEARAccount = await window.near.account(window.NEARwallet.getAccountId());
-        window.senderNEARAccount = senderNEARAccount;
-      }
-    }
-  }
+    setLoading(true);
+  }, [setLoading]);
 
   const payBill = async () => {
-    if (token === "ETH") {
-      const provider = await biconomy.provider;
-      const contractInterface = new ethers.utils.Interface(process.env.REACT_APP_CONTRACT_ABI);
-      const signer = new ethers.Wallet(window.privateKey, biconomy.ethersProvider);
-      const contractInstance = new ethers.Contract(
-        process.env.REACT_APP_CONTRACT_ADDRESS,
-        contractInterface,
-        signer
-      );
+    const enoughBalance = await checkBalance();
+    if (enoughBalance) {
+      if (tokenCurrency === "ETH") {
+        const provider = await biconomy.provider;
+        const contractInstance = new ethers.Contract(
+          process.env.REACT_APP_CONTRACT_ADDRESS,
+          process.env.REACT_APP_CONTRACT_ABI,
+          biconomy.ethersProvider
+        );
 
-      // console.log(contractInstance);
+        let { data } = await contractInstance.populateTransaction.transfer(buyerAddress, sellerAddress, ethers.utils.parseEther(Number(amountTo).toFixed(18)).toHexString());
 
-      let { data } = await contractInstance.populateTransaction.transfer(sellerAddress);
+        let txParams = {
+          from: buyerAddress,
+          to: process.env.REACT_APP_CONTRACT_ADDRESS,
+          data: data,
+          signatureType: "EIP712_SIGN"
+        };
 
-      let txParams = {
-        from: buyerAddress,
-        to: process.env.REACT_APP_CONTRACT_ADDRESS,
-        contractAddress: process.env.REACT_APP_CONTRACT_ADDRESS,
-        data: data,
-        value: ethers.utils.parseEther(Number(amountTo).toFixed(18)).toHexString(),
-        signatureType: "EIP712_SIGN"
-      };
+        let txHash = await provider.send("eth_sendTransaction", [txParams]);
 
-      let txHash = await provider.send("eth_sendTransaction", [txParams]);
+        console.log(txHash);
 
-      console.log(txHash);
-
-      // Listen to transaction updates:
-      biconomy.on("txHashGenerated", (data: { transactionId: string; transactionHash: string; }) => {
-        console.log("txHashGenerated: " + data);
-        setTransactionHash(`tx hash ${data.transactionHash}`);
-      });
-
-      biconomy.on("txMined", (data: { msg: string; id: string; hash: string; receipt: string }) => {
-        console.log("txMined: " + data);
-
-        setTransactionStatus('Your payment processed');
-        setTransactionHash(`${data.hash}`);
-      });
-
-      biconomy.on("onError", (data: { error: any; transactionId: string }) => {
-        console.log("onError: " + data);
-      });
-
-      biconomy.on("txHashChanged", (data: { transactionId: string, transactionHash: string }) => {
-        console.log("txHashChanged: " + data);
-      });
-
-      // axios.get(process.env.REACT_APP_API_URL + `/signedTransactions/save/${data.transactionHash}/pay/${amount}/${data.gasUsed}/${data.status}`).then(async (result) => {
-      // }).catch(async (err) => {
-      //   console.log(err);
-      // });
-
-      // if (isMounted.current) {
-      //   if (receipt.status) {
-      //     setTransactionStatus('Your payment processed');
-      //     setTransactionHash(receipt.transactionHash);
-      //   }
-      //   else if (!receipt.status) {
-      //     setTransactionStatus('Your payment have error! Please contact to our support at support@estar-solutions.com');
-      //   }
-      // }
-
-      // const txParams = {
-      //   from: buyerAddress,
-      //   to: sellerAddress,
-      //   value: ethers.utils.parseEther(Number(amountTo).toFixed(18)).toHexString(),
-      //   nonce: await EthereumWeb3.getTransactionCount(buyerAddress, "latest"),
-      //   gasLimit: ethers.utils.hexlify(25000),
-      //   gasPrice: await (await EthereumWeb3.getGasPrice()).toNumber(),
-      // }
-    }
-    else if (token === "NEAR") {
-
-      if (buyerAddress === "") {
-        alert("Please make sure you have connected your wallet!");
+        axios.get(process.env.REACT_APP_API_URL + `/transactions/save/${txHash.transactionId}/pay/${amount}/${queries.paymentID}`).then(async (result) => {
+        }).catch(async (err) => {
+          console.log(err);
+        });
       }
-      else {
-        const result = await window.senderNEARAccount.sendMoney(sellerAddress, NEARutils.format.parseNearAmount(amountTo.toString()));
-        console.log(result);
-      }
+      else if (tokenCurrency === "NEAR") {
 
-    }
-    else if (token === "BCH") {
-      confirmAlert({
-        customUI: ({ onClose }) => {
-          return (
-            <div className='custom-ui'>
-              <h1>Are you sure?</h1>
-              <p>Continue process this payment?</p>
-              <button onClick={onClose}>Cancel</button>
-              <button
-                onClick={() => {
-                  handleClickProcess();
-                  onClose();
-                }}
-              >
-                Yes, Continue Process Payment
-              </button>
-            </div>
-          );
+        if (buyerAddress === "") {
+          alert("Please make sure you have connected your wallet!");
         }
-      });
-    }
-    else if (token === "BTC") {
-      if (isMounted.current) {
+        else {
+          let senderNEARAccount = await window.near.account(buyerAddress);
+          const result = await senderNEARAccount.sendMoney(sellerAddress, NEARutils.format.parseNearAmount(amountTo.toString()));
+
+          console.log(result);
+        }
 
       }
+      else if (tokenCurrency === "BCH") {
+        confirmAlert({
+          customUI: ({ onClose }) => {
+            return (
+              <div className='custom-ui'>
+                <h1>Are you sure?</h1>
+                <p>Continue process this payment?</p>
+                <button onClick={onClose}>Cancel</button>
+                <button
+                  onClick={() => {
+                    handleClickProcess();
+                    onClose();
+                  }}
+                >
+                  Yes, Continue Process Payment
+                </button>
+              </div>
+            );
+          }
+        });
+      }
+      else if (tokenCurrency === "BTC") {
+        if (isMounted.current) {
+
+        }
+      }
+    }
+    else {
+      alert('Not enough tokens in your balance');
+      // setShowAddFundModal(true);
     }
   }
 
@@ -282,6 +183,26 @@ function App() {
     }).catch(async (err) => {
       console.log(err);
     });
+  }
+
+  const checkBalance = async () => {
+    const contractInstance = new ethers.Contract(
+      process.env.REACT_APP_CONTRACT_ADDRESS,
+      process.env.REACT_APP_CONTRACT_ABI,
+      biconomy.ethersProvider
+    );
+
+    const buyerBalance = Number(ethers.utils.formatEther(await contractInstance.callStatic.getBalance(buyerAddress)));
+    console.log(buyerBalance);
+    console.log(amountTo);
+    console.log(buyerBalance <= amountTo)
+    if (buyerBalance <= amountTo) {
+      setBalanceStatus("Your balance is not enough for this bill. Please add more funds to your wallet by click <button onClick={()=>{dispatch(setShowAddFundModal(true));}}>here</button>!");
+      return false;
+    }
+    else {
+      return true;
+    }
   }
 
   return (
@@ -296,190 +217,149 @@ function App() {
             <p>Payment does not exist. Please check again!</p>
             :
             <>
-              {paymentStatus === 'pending'
+              {wallet === ""
                 ?
-                <div className="App">
-                  <label htmlFor="walletSelection">Select a wallet to connect so we can be sure that you are the owner of the wallet address. Please make sure you have installed wallet!</label><br />
-                  <select id="walletSelection" onChange={(event) => {
-                    if (isMounted.current) {
-                      setBuyerAddress('');
-                      setWallet(event.target.value);
-                      if (event.target.value === 'Bitcoin') {
-                        setToken('BTC');
-                      }
-                      else if (event.target.value === 'MetaMask') {
-                        setToken('ETH');
-                      }
-                      else if (event.target.value === 'NEAR') {
-                        setToken('NEAR');
-                      }
-                      else if (event.target.value === 'Binance') {
-                        setToken('ETH');
-                      }
-                      const api = process.env.REACT_APP_API_URL + `/exchange/${token}/${currency}/${amount}`;
-
-                      axios.get(`${api}`).then(async (result) => {
-                        setAmountTo(result.data.amountTo);
-                      })
-                    }
-                  }} value={wallet}>
-                    <option value="MetaMask">MetaMask</option>
-                    <option value="Binance">Binance</option>
-                    <option value="Bitcoin">Bitcoin</option>
-                    <option value="NEAR">NEAR</option>
-                  </select>
-                  {wallet === 'Bitcoin'
-                    ? <>
-                      <HelpBitcoinWallet />
-                    </>
-                    :
-                    <>
-                      <button onClick={connectWallet}>Connect wallet</button><br />
-                      <p>Buyer wallet address: {buyerAddress}</p><br />
-                    </>
-                  }
-                  {
-                    wallet === 'MetaMask'
-                      ? <div>
-                        <p>We have your address already. Now, please enter private key of this address. Don't worry, we don't save it.<br />
-                          <input placeholder='Enter private key here' type={'password'} onBlur={(e) => {
-                            window.privateKey = e.target.value;
-                          }} />
-                        </p>
-                        <a href='https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-Export-an-Account-Private-Key'>Check here if you don't know how to get private key of address.</a>
-                      </div>
-                      : null
-                  }
-
-                  <p>Billing amount : {amount} {currency} ~ {amountTo} {token}</p>
-                  <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
-                  <select id='tokenSelection' onChange={(e) => {
-                    if (isMounted.current) {
-                      const api = process.env.REACT_APP_API_URL + `/exchange/${e.target.value}/${currency}/${amount}`;
-
-                      axios.get(`${api}`).then(async (result) => {
-                        setToken(e.target.value);
-                        setAmountTo(result.data.amountTo);
-                      })
-                    }
-                  }}>
-                    {wallet === 'Bitcoin'
-                      ? <>
-                        <option value="BTC">Bitcoin (BTC)</option>
-                        <option value="BCH">Bitcoin Cash (BCH)</option>
-                      </>
-                      : null
-                    }
-                    {wallet === 'MetaMask'
-                      ?
-                      <>
-                        <option value="ETH">Ethereum (ETH)</option>
-                        <option value="USDT">USDT</option>
-                        <option value="USDC">USDC</option>
-                      </>
-                      : null
-                    }
-                    {wallet === 'NEAR'
-                      ? <option value="NEAR">NEAR Protocol (NEAR)</option>
-                      : null
-                    }
-                    {
-                      wallet === 'Binance'
+                <button onClick={() => { setShowModalSelectWallet(true); }}>
+                  Connect Wallet
+                </button>
+                :
+                <>
+                  {paymentStatus === 'pending'
+                    ?
+                    <div className="App">
+                      {wallet === 'Bitcoin'
                         ? <>
-                          <option value="ETH">Ethereum (ETH)</option>
-                          <option value="USDT">USDT (BEP2)</option>
-                          <option value="USDC">USDC</option>
+                          <HelpBitcoinWallet />
+                        </>
+                        :
+                        null
+                      }
+                      <p>Billing amount : {amount} {fiatCurrency} ~ {amountTo} {tokenCurrency}</p>
+                      <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
+                      <select id='tokenSelection' onChange={(e) => {
+                        setTokenCurrency(e.target.value);
+                        const api = process.env.REACT_APP_API_URL + `/exchange/${tokenCurrency}/${fiatCurrency}/${amount}`;
+
+                        axios.get(`${api}`).then(async (result) => {
+                          setAmountTo(result.data.amountTo);
+                        })
+                      }}>
+                        {wallet === 'Bitcoin'
+                          ? <>
+                            <option value="BTC">Bitcoin (BTC)</option>
+                            <option value="BCH">Bitcoin Cash (BCH)</option>
+                          </>
+                          : null
+                        }
+                        {wallet === 'MetaMask'
+                          ?
+                          <>
+                            <option value="ETH">Ethereum (ETH)</option>
+                            <option value="USDT">USDT</option>
+                            <option value="USDC">USDC</option>
+                          </>
+                          : null
+                        }
+                        {wallet === 'NEAR'
+                          ? <option value="NEAR">NEAR Protocol (NEAR)</option>
+                          : null
+                        }
+                        {
+                          wallet === 'BinanceWallet'
+                            ? <>
+                              <option value="ETH">Ethereum (ETH)</option>
+                              <option value="USDT">USDT (BEP2)</option>
+                              <option value="USDC">USDC</option>
+                            </>
+                            : null
+                        }
+                      </select><br />
+                      {tokenCurrency === 'BTC'
+                        ?
+                        <QRURI sellerAddress={sellerAddress} amount={amountTo.toString()} message={'Pay for ' + sellerAddress + ' with amount = ' + amountTo.toString() + ' BTC'} label={'BTC'} />
+                        :
+                        null
+                      }
+                      {wallet === 'MetaMask'
+                        ?
+                        <>
+                          <button onClick={payBill}>Process payment</button>
+                          {
+                            transactionStatus !== ""
+                              ? <p>{transactionStatus}</p>
+                              : null
+                          }
+                          {
+                            resultTxHash !== ""
+                              ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + resultTxHash}>{resultTxHash}</a></p>
+                              : null
+                          }
                         </>
                         : null
-                    }
-                  </select><br />
-                  {token === 'BTC'
-                    ?
-                    <QRURI sellerAddress={sellerAddress} amount={amountTo.toString()} message={'Pay for ' + sellerAddress + ' with amount = ' + amountTo.toString() + ' BTC'} label={'BTC'} />
-                    :
-                    null
-                  }
-                  {wallet === 'MetaMask'
-                    ?
-                    <>
-                      <button onClick={payBill}>Process payment</button>
-
-                      <p>Or scan QR code</p>
-                      <QRCodeSVG value={process.env.REACT_APP_API_URL + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
-                      {
-                        transactionStatus !== ""
-                          ? <p>{transactionStatus}</p>
-                          : null
                       }
-                      {
-                        transactionHash !== ""
-                          ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
-                          : null
+                      {wallet === 'BinanceWallet'
+                        ?
+                        <>
+                          <button onClick={payBill}>Process payment</button>
+                          {
+                            transactionStatus !== ""
+                              ? <p>{transactionStatus}</p>
+                              : null
+                          }
+                          {
+                            resultTxHash !== ""
+                              ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + resultTxHash}>{resultTxHash}</a></p>
+                              : null
+                          }
+                        </>
+                        : null
                       }
-                    </>
-                    : null
-                  }
-                  {wallet === 'Binance'
-                    ?
-                    <>
-                      <button onClick={payBill}>Process payment</button>
-
-                      <p>Or scan QR code</p>
-                      <QRCodeSVG value={process.env.REACT_APP_API_URL + '/transfer/' + wallet + '/' + buyerAddress + '-' + sellerAddress + '/' + amountTo + '/' + token} />
-                      {
-                        transactionStatus !== ""
-                          ? <p>{transactionStatus}</p>
-                          : null
+                      {wallet === 'Bitcoin'
+                        ?
+                        <>
+                          {tokenCurrency === 'BCH'
+                            ?
+                            <>
+                              <button onClick={payBill}>Process payment</button>
+                            </>
+                            : null
+                          }
+                        </>
+                        : null
                       }
-                      {
-                        transactionHash !== ""
-                          ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + transactionHash}>{transactionHash}</a></p>
-                          : null
-                      }
-                    </>
-                    : null
-                  }
-                  {wallet === 'Bitcoin'
-                    ?
-                    <>
-                      {token === 'BCH'
+                      {wallet === 'NEAR'
                         ?
                         <>
                           <button onClick={payBill}>Process payment</button>
                         </>
                         : null
                       }
-                    </>
+                    </div >
                     : null
                   }
-                  {wallet === 'NEAR'
+                  {paymentStatus === "paid"
                     ?
-                    <>
-                      <button onClick={payBill}>Process payment</button>
-                    </>
+
+                    <div>
+                      This payment has been paid. Please ask for seller to check payment status to confirm!
+                    </div>
+
                     : null
                   }
-                </div >
-                : null
+                  {paymentStatus === "canceled"
+                    ?
+
+                    <div>
+                      This payment has been canceled. Please ask for seller to create new payment!
+                    </div>
+
+                    : null
+                  }
+                </>
               }
-              {paymentStatus === "paid"
-                ?
-
-                <div>
-                  This payment has been paid. Please ask for seller to check payment status to confirm!
-                </div>
-
-                : null
-              }
-              {paymentStatus === "canceled"
-                ?
-
-                <div>
-                  This payment has been canceled. Please ask for seller to create new payment!
-                </div>
-
-                : null
-              }
+              <FundModal showAddFundModal={showAddFundModal} buyerAddress={buyerAddress} amount={amount} tokenCurrency={tokenCurrency} fiatCurrency={fiatCurrency} setTxHash={(txHash: string) => { setResultTxHash(txHash); }} setShowResultModal={(show: boolean) => { setShowResultModal(show); }} onClose={() => { setShowAddFundModal(false); }} />
+              <ResultModal showResultModal={showResultModal} onClose={() => { setShowResultModal(false); }} resultTxHash={resultTxHash} />
+              <ChooseWallet showModalSelectWallet={showModalSelectWallet} onClose={() => { setShowModalSelectWallet(false); }} setBuyerAddress={(buyerAddress: any) => { setBuyerAddress(buyerAddress); }} setWalletType={(walletType: string) => { setWallet(walletType); }} setTokenCurrency={(tokenCurrency: string) => { setTokenCurrency(tokenCurrency); }} setAmountTo={(amountTo: number) => { setAmountTo(amountTo); }} fiatCurrency={fiatCurrency} tokenCurrency={tokenCurrency} amount={amount} />
             </>
           }
         </div >
@@ -510,7 +390,7 @@ function QRURI(props: {
   message: string;
   label: string;
 }) {
-  const [showURI, setShowURI] = useStateIfMounted(false);
+  const [showURI, setShowURI] = useState(false);
 
   return (
     <div>

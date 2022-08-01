@@ -1,3 +1,12 @@
+:root {
+  --space-4x: 16px;
+  --space-6x: 24px;
+  --space-8x: 32px;
+  --blue-100: #f5f7fd;
+  --color-text-link: var(--blue-600);
+  --blue-600: #375bd2;
+}
+
 .App {
   text-align: center;
   width: 100%;
@@ -55,6 +64,38 @@ body {
 .container {
   display: flex;
   justify-content: center;
-  align-items: center;  
+  align-items: center;
   height: 100%;
+}
+
+@media screen and (min-width: 768px) {
+  .ConnectWalletModal_buttons {
+    grid-gap: var(--space-8x);
+    gap: var(--space-8x);
+    flex-direction: row;
+  }
+}
+
+.ConnectWalletModal_buttons {
+  display: flex;
+  grid-gap: var(--space-4x);
+  gap: var(--space-4x);
+  flex-direction: row;
+}
+
+.ConnectWalletModal_buttons button {
+  background-color: var(--blue-100);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  grid-gap: 10px;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  padding: var(--space-6x);
+  color: var(--color-text-link);
+}
+
+.ReactModal__Overlay{
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
