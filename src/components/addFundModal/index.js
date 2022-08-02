@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import Modal from 'react-modal';
 import Button from 'react-bootstrap/Button';
 import { ethers } from "ethers";
@@ -35,9 +36,18 @@ export default function FundModal(props) {
         };
 
         let txHash = await window.ethereum.send("eth_sendTransaction", [txParams]);
+        console.log(txHash);
         props.setTxHash(txHash);
         props.setShowResultModal(true);
     }
+
+    useEffect(() => {
+        const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${amountDeposit}`;
+
+        axios.get(`${api}`).then(async (result) => {
+            setAmountTo(result.data.amountTo);
+        })
+    }, [amountDeposit, props.fiatCurrency, props.tokenCurrency]);
 
     return (
         <>
