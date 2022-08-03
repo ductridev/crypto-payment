@@ -43,7 +43,7 @@ export default function ChooseWallet(props) {
                                 props.setWalletType("MetaMask");
                                 props.setTokenCurrency("ETH");
 
-                                const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
+                                const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
 
                                 axios.get(`${api}`).then(async (result) => {
                                     props.setAmountTo(result.data.amountTo);
@@ -71,7 +71,7 @@ export default function ChooseWallet(props) {
                                 props.setWalletType("NEAR");
                                 props.setTokenCurrency("NEAR");
 
-                                const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
+                                const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
 
                                 axios.get(`${api}`).then(async (result) => {
                                     props.setAmountTo(result.data.amountTo);
@@ -93,7 +93,7 @@ export default function ChooseWallet(props) {
                                     props.setWalletType("BinanceWallet");
                                     props.setTokenCurrency("ETH");
 
-                                    const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
+                                    const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
 
                                     axios.get(`${api}`).then(async (result) => {
                                         props.setAmountTo(result.data.amountTo);

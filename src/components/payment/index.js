@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
@@ -14,13 +14,11 @@ import { getQueryParams } from '../../utils/functions';
 import HelpBitcoinWallet from '../helpBitcoinWallet';
 import QRURI from '../qrURI';
 
-export default function Payment() {
+export default function Payment(props) {
     const [loading, setLoading] = useState(true);
     const [showAddFundModal, setShowAddFundModal] = useState(false);
     const [showResultModal, setShowResultModal] = useState(false);
-    const [showModalSelectWallet, setShowModalSelectWallet] = useState(false);
 
-    const [wallet, setWallet] = useState("");
     const [resultTxHash, setResultTxHash] = useState("");
 
     const [transactionStatus, setTransactionStatus] = useState("");
@@ -36,7 +34,7 @@ export default function Payment() {
     const [paymentExist, setPaymentExist] = useState(false);
 
     var queries = getQueryParams();
-    var biconomy;
+    var biconomy = useRef(null);
 
     useEffect(() => {
         console.log('mount');
@@ -51,7 +49,7 @@ export default function Payment() {
                     setFiatCurrency(result.data.currency);
                     setAmount(parseFloat(result.data.amount));
 
-                    const api = process.env.REACT_APP_API_URL + `/exchange/${tokenCurrency}/${fiatCurrency}/${amount}`;
+                    const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${tokenCurrency}/${fiatCurrency}/${amount}`;
 
                     axios.get(`${api}`).then(async (result) => {
                         setAmountTo(result.data.amountTo);
@@ -63,50 +61,55 @@ export default function Payment() {
             }).catch(function (error) {
             });
 
-            if (typeof window.ethereum !== 'undefined') {
-                const initBiconomy = async () => {
-                    biconomy = new Biconomy(window.ethereum, {
-                        apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
-                        contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
-                        debug: false
-                    });
-                    await biconomy.init();
-                    setTimeout(() => setLoading(false), 3000);
-                };
-                initBiconomy();
-            }
-            else {
-                if (typeof window.BinanceChain !== 'undefined') {
+            if (props.wallet !== "") {
+                if (typeof window.ethereum !== 'undefined') {
                     const initBiconomy = async () => {
-                        biconomy = new Biconomy(window.BinanceChain, {
+                        biconomy.current = new Biconomy(window.ethereum, {
                             apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
                             contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
                             debug: false
                         });
-                        await biconomy.init();
+                        await biconomy.current.init();
                         setTimeout(() => setLoading(false), 3000);
                     };
                     initBiconomy();
                 }
                 else {
-                    alert("Please install MetaMask Wallet or Binance Wallet");
+                    if (typeof window.BinanceChain !== 'undefined') {
+                        const initBiconomy = async () => {
+                            biconomy.current = new Biconomy(window.BinanceChain, {
+                                apiKey: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
+                                contractAddresses: [process.env.REACT_APP_CONTRACT_ADDRESS],
+                                debug: false
+                            });
+                            await biconomy.current.init();
+                            setTimeout(() => setLoading(false), 3000);
+                        };
+                        initBiconomy();
+                    }
+                    else {
+                        alert("Please install MetaMask Wallet or Binance Wallet");
+                    }
                 }
+            }
+            else {
+                setLoading(false);
             }
         }
         else {
             setLoading(false);
         }
-    }, [amount, amountTo, fiatCurrency, setLoading, setPaymentExist, setPaymentStatus, setSellerAddress, tokenCurrency]);
+    }, [amount, amountTo, fiatCurrency, props.wallet, queries.paymentID, setLoading, setPaymentExist, setPaymentStatus, setSellerAddress, tokenCurrency]);
 
     const payBill = async () => {
         const enoughBalance = await checkBalance();
         if (enoughBalance) {
             if (tokenCurrency === "ETH") {
-                const provider = await biconomy.provider;
+                const provider = await biconomy.current.provider;
                 const contractInstance = new ethers.Contract(
                     process.env.REACT_APP_CONTRACT_ADDRESS,
                     process.env.REACT_APP_CONTRACT_ABI,
-                    biconomy.ethersProvider
+                    biconomy.current.ethersProvider
                 );
 
                 let { data } = await contractInstance.populateTransaction.transfer(buyerAddress, sellerAddress, ethers.utils.parseEther(Number(amountTo).toFixed(18)).toHexString());
@@ -136,7 +139,7 @@ export default function Payment() {
                     let senderNEARAccount = await window.near.account(buyerAddress);
                     const result = await senderNEARAccount.sendMoney(sellerAddress, NEARutils.format.parseNearAmount(amountTo.toString()));
 
-                    // console.log(result);
+                    console.log(result);
                 }
 
             }
@@ -179,14 +182,20 @@ export default function Payment() {
         });
     }
 
-    const checkBalance = async () => {
+    const getBalance = async () => {
         const contractInstance = new ethers.Contract(
             process.env.REACT_APP_CONTRACT_ADDRESS,
             process.env.REACT_APP_CONTRACT_ABI,
-            biconomy.ethersProvider
+            biconomy.current.ethersProvider
         );
 
+
         const buyerBalance = Number(ethers.utils.formatEther(await contractInstance.callStatic.getBalance(buyerAddress)));
+        return buyerBalance;
+    }
+
+    const checkBalance = async () => {
+        const buyerBalance = await getBalance();
         if (buyerBalance <= amountTo) {
             return false;
         }
@@ -206,17 +215,15 @@ export default function Payment() {
                         <p>Payment does not exist. Please check again!</p>
                         :
                         <>
-                            {wallet === ""
+                            {props.wallet === ""
                                 ?
-                                <button onClick={() => { setShowModalSelectWallet(true); }}>
-                                    Connect Wallet
-                                </button>
+                                null
                                 :
                                 <>
                                     {paymentStatus === 'pending'
                                         ?
                                         <div className="App">
-                                            {wallet === 'Bitcoin'
+                                            {props.wallet === 'Bitcoin'
                                                 ? <>
                                                     <HelpBitcoinWallet />
                                                 </>
@@ -227,20 +234,20 @@ export default function Payment() {
                                             <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
                                             <select id='tokenSelection' onChange={(e) => {
                                                 setTokenCurrency(e.target.value);
-                                                const api = process.env.REACT_APP_API_URL + `/exchange/${tokenCurrency}/${fiatCurrency}/${amount}`;
+                                                const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${tokenCurrency}/${fiatCurrency}/${amount}`;
 
                                                 axios.get(`${api}`).then(async (result) => {
                                                     setAmountTo(result.data.amountTo);
                                                 })
                                             }}>
-                                                {wallet === 'Bitcoin'
+                                                {props.wallet === 'Bitcoin'
                                                     ? <>
                                                         <option value="BTC">Bitcoin (BTC)</option>
                                                         <option value="BCH">Bitcoin Cash (BCH)</option>
                                                     </>
                                                     : null
                                                 }
-                                                {wallet === 'MetaMask'
+                                                {props.wallet === 'MetaMask'
                                                     ?
                                                     <>
                                                         <option value="ETH">Ethereum (ETH)</option>
@@ -249,18 +256,17 @@ export default function Payment() {
                                                     </>
                                                     : null
                                                 }
-                                                {wallet === 'NEAR'
+                                                {props.wallet === 'NEAR'
                                                     ? <option value="NEAR">NEAR Protocol (NEAR)</option>
                                                     : null
                                                 }
-                                                {
-                                                    wallet === 'BinanceWallet'
-                                                        ? <>
-                                                            <option value="ETH">Ethereum (ETH)</option>
-                                                            <option value="USDT">USDT (BEP2)</option>
-                                                            <option value="USDC">USDC</option>
-                                                        </>
-                                                        : null
+                                                {props.wallet === 'BinanceWallet'
+                                                    ? <>
+                                                        <option value="ETH">Ethereum (ETH)</option>
+                                                        <option value="USDT">USDT (BEP2)</option>
+                                                        <option value="USDC">USDC</option>
+                                                    </>
+                                                    : null
                                                 }
                                             </select><br />
                                             {tokenCurrency === 'BTC'
@@ -269,7 +275,7 @@ export default function Payment() {
                                                 :
                                                 null
                                             }
-                                            {wallet === 'MetaMask'
+                                            {props.wallet === 'MetaMask'
                                                 ?
                                                 <>
                                                     <button onClick={payBill}>Process payment</button>
@@ -278,15 +284,10 @@ export default function Payment() {
                                                             ? <p>{transactionStatus}</p>
                                                             : null
                                                     }
-                                                    {
-                                                        resultTxHash !== ""
-                                                            ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + resultTxHash}>{resultTxHash}</a></p>
-                                                            : null
-                                                    }
                                                 </>
                                                 : null
                                             }
-                                            {wallet === 'BinanceWallet'
+                                            {props.wallet === 'BinanceWallet'
                                                 ?
                                                 <>
                                                     <button onClick={payBill}>Process payment</button>
@@ -295,15 +296,10 @@ export default function Payment() {
                                                             ? <p>{transactionStatus}</p>
                                                             : null
                                                     }
-                                                    {
-                                                        resultTxHash !== ""
-                                                            ? <p>Payment success, this is payment address : <a href={'https://kovan.etherscan.io/tx/' + resultTxHash}>{resultTxHash}</a></p>
-                                                            : null
-                                                    }
                                                 </>
                                                 : null
                                             }
-                                            {wallet === 'Bitcoin'
+                                            {props.wallet === 'Bitcoin'
                                                 ?
                                                 <>
                                                     {tokenCurrency === 'BCH'
@@ -316,7 +312,7 @@ export default function Payment() {
                                                 </>
                                                 : null
                                             }
-                                            {wallet === 'NEAR'
+                                            {props.wallet === 'NEAR'
                                                 ?
                                                 <>
                                                     <button onClick={payBill}>Process payment</button>
@@ -346,9 +342,9 @@ export default function Payment() {
                                     }
                                 </>
                             }
-                            <FundModal showAddFundModal={showAddFundModal} buyerAddress={buyerAddress} amount={amount} tokenCurrency={tokenCurrency} fiatCurrency={fiatCurrency} setTxHash={(txHash) => { setResultTxHash(txHash); }} setShowResultModal={(show) => { setShowResultModal(show); }} onClose={() => { setShowAddFundModal(false); }} />
+                            <FundModal showAddFundModal={showAddFundModal} buyerAddress={buyerAddress} buyerBalance={getBalance} amountTo={amountTo} tokenCurrency={tokenCurrency} fiatCurrency={fiatCurrency} setTxHash={(txHash) => { setResultTxHash(txHash); }} setShowResultModal={(show) => { setShowResultModal(show); }} onClose={() => { setShowAddFundModal(false); }} />
                             <ResultModal showResultModal={showResultModal} onClose={() => { setShowResultModal(false); setLoading(true); }} resultTxHash={resultTxHash} />
-                            <ChooseWallet showModalSelectWallet={showModalSelectWallet} onClose={() => { setShowModalSelectWallet(false); setLoading(true); }} setBuyerAddress={(buyerAddress) => { setBuyerAddress(buyerAddress); }} setWalletType={(walletType) => { setWallet(walletType); }} setTokenCurrency={(tokenCurrency) => { setTokenCurrency(tokenCurrency); }} setAmountTo={(amountTo) => { setAmountTo(amountTo); }} fiatCurrency={fiatCurrency} tokenCurrency={tokenCurrency} amount={amount} />
+                            <ChooseWallet showModalSelectWallet={props.showModalSelectWallet} onClose={() => { props.setShowModalSelectWallet(false); setLoading(true); }} setBuyerAddress={(buyerAddress) => { setBuyerAddress(buyerAddress); }} setWalletType={(walletType) => { props.setWallet(walletType); }} setTokenCurrency={(tokenCurrency) => { setTokenCurrency(tokenCurrency); }} setAmountTo={(amountTo) => { setAmountTo(amountTo); }} fiatCurrency={fiatCurrency} tokenCurrency={tokenCurrency} amount={amount} />
                         </>
                     }
                 </div >

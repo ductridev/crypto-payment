@@ -9,7 +9,7 @@ Modal.setAppElement('#root');
 
 export default function FundModal(props) {
     const [amountTo, setAmountTo] = useState(0);
-    const [amountDeposit, setAmountDeposit] = useState(props.amount);
+    const [amountDeposit, setAmountDeposit] = useState(0);
 
     const customStyles = {
         content: {
@@ -23,7 +23,7 @@ export default function FundModal(props) {
     };
 
     const addMoreFund = async () => {
-        const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${amountDeposit}`;
+        const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${amountDeposit}`;
 
         axios.get(`${api}`).then(async (result) => {
             setAmountTo(result.data.amountTo);
@@ -36,27 +36,42 @@ export default function FundModal(props) {
         };
 
         let txHash = await window.ethereum.send("eth_sendTransaction", [txParams]);
-        console.log(txHash);
-        props.setTxHash(txHash);
+        props.setTxHash(txHash.result);
         props.setShowResultModal(true);
+        props.onClose();
     }
 
     useEffect(() => {
-        const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${amountDeposit}`;
+        if (amountDeposit === 0) {
+            const getBalance = async () => {
+                const buyerBalance = await props.buyerBalance;
+                return buyerBalance;
+            }
+            console.log(getBalance());
+            const api = process.env.REACT_APP_API_URL + `/exchangeToken2Fiat/${props.tokenCurrency}/${props.fiatCurrency}/${props.amountTo - getBalance()}`;
 
-        axios.get(`${api}`).then(async (result) => {
-            setAmountTo(result.data.amountTo);
-        })
-    }, [amountDeposit, props.fiatCurrency, props.tokenCurrency]);
+            axios.get(`${api}`).then(async (result) => {
+                setAmountTo(props.amountTo - getBalance());
+                setAmountDeposit(result.data.amount);
+            })
+        }
+        else {
+            const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${amountDeposit}`;
+
+            axios.get(`${api}`).then(async (result) => {
+                setAmountTo(result.data.amountTo);
+            })
+        }
+    }, [amountDeposit, props.amountTo, props.buyerBalance, props.fiatCurrency, props.tokenCurrency]);
 
     return (
         <>
             <Modal isOpen={props.showAddFundModal} onRequestClose={props.onClose} appElement={document.getElementById('main')} style={customStyles}>
                 <h3>Add More Fund</h3>
                 <div>
-                    Enter amount you want to add to your balance (At least {props.amount}): <input value={amountDeposit} onBlur={(e) => {
-                        if (e.target.value < props.amount) {
-                            e.target.value = props.amount;
+                    Enter amount you want to add to your balance (At least {amountDeposit}): <input type={'number'} step='0.01' min={'0'} value={amountDeposit} onBlur={(e) => {
+                        if (e.target.value < amountDeposit) {
+                            setAmountDeposit(amountDeposit);
                         }
                         else {
                             setAmountDeposit(e.target.value);
