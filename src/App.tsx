@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  Routes,
+  Route,
+} from "react-router-dom";
 
 import './App.css';
 import Header from './components/header';
@@ -8,18 +12,14 @@ import BridgeWidget from './components/bridgeWidget';
 function App() {
   const [wallet, setWallet] = useState("");
   const [showModalSelectWallet, setShowModalSelectWallet] = useState(false);
-  const [tab, setTab] = useState("default");
+
   return (
     <>
-      <Header wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} setTab={(tab: string) => { setTab(tab); }} />
-      {tab === "default"
-        ?
-        <Payment showModalSelectWallet={showModalSelectWallet} wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} />
-        : null}
-      {tab === "hyphenBridge"
-        ?
-        <BridgeWidget />
-        : null}
+      <Header wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} />
+      <Routes>
+        <Route path="/:paymentID" element={<Payment showModalSelectWallet={showModalSelectWallet} wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} />} />
+        <Route path="/hyphen" element={<BridgeWidget />} />
+      </Routes>
     </>
   );
 }

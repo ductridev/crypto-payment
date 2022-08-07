@@ -66,7 +66,7 @@ export default function FundModal(props) {
 
     return (
         <>
-            <Modal isOpen={props.showAddFundModal} onRequestClose={props.onClose} appElement={document.getElementById('main')} style={customStyles}>
+            <Modal isOpen={props.showAddFundModal} onRequestClose={props.onClose} appElement={document.getElementById('main')} style={customStyles} shouldCloseOnOverlayClick={false}>
                 <h3>Add More Fund</h3>
                 <div>
                     Enter amount you want to add to your balance (At least {amountDeposit}): <input type={'number'} step='0.01' min={'0'} value={amountDeposit} onBlur={(e) => {

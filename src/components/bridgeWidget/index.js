@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import * as HyphenWidget from "@biconomy/hyphen-widget";
 import "@biconomy/hyphen-widget/dist/index.css";
 
 export default function BridgeWidget() {
-  const [hyphenWidget, setHyphenWidget] = useState();
 
   useEffect(() => {
     const widget = HyphenWidget.default.init(
@@ -16,26 +15,20 @@ export default function BridgeWidget() {
         apiKeys: {
           Ethereum: "Jy_AJCwnO.49dcee52-b29a-4ec5-91ea-f1a71f9793f6",
         },
+        tag: "cp kov"
       }
     );
 
     if (widget) {
-      setHyphenWidget(widget);
+      widget.open();
     }
   }, []);
 
-  function handleOpen() {
-    hyphenWidget.open();
-  }
-
-  function handleClose() {
-    hyphenWidget.close();
-  }
-
-  return <div className="BridgeWidget">
-    <button onClick={handleOpen}>Open Widget</button>
-    <button onClick={handleClose}>Close Widget</button>
-
-    <div id="widget"></div>
-  </div>;
+  return (
+    <div className='container'>
+      <div className='main'>
+        <div id="widget"></div>
+      </div>
+    </div>
+  )
 }

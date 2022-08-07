@@ -11,7 +11,7 @@ function getQueryParams(query = null) {
         })
         return queries;
     }
-    else{
+    else {
         return 0;
     }
 }
