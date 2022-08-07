@@ -1,3 +1,5 @@
+[![Netlify Status](https://api.netlify.com/api/v1/badges/d902a6d7-916e-4bda-b167-9664b7babc40/deploy-status)](https://app.netlify.com/sites/crypto-payment-07082022/deploys)
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
