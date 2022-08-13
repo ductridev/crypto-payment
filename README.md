@@ -1,4 +1,5 @@
 [![Netlify Status](https://api.netlify.com/api/v1/badges/d902a6d7-916e-4bda-b167-9664b7babc40/deploy-status)](https://app.netlify.com/sites/crypto-payment-07082022/deploys)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fductridev%2Fcrypto-payment.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fductridev%2Fcrypto-payment?ref=badge_shield)
 
 # Getting Started with Create React App
 
@@ -46,3 +47,7 @@ You don’t have to ever use `eject`. The curated feature set is suitable for sm
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fductridev%2Fcrypto-payment.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fductridev%2Fcrypto-payment?ref=badge_large)
