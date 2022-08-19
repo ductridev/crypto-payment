@@ -14,7 +14,7 @@ export default function Header(props) {
                 <NavLink to="/hyphen" style={navLinkStyle}>Instant Cross-Chain Transfers</NavLink>
             </div>
             <div className="connect-wallet">
-                <button onClick={() => { props.setShowModalSelectWallet(true); }} {...props.wallet === "" ? "" : "disabled"}>
+                <button onClick={() => { props.setShowModalSelectWallet(true)}} {...props.wallet === "" ? "" : "disabled"}>
                     Connect Wallet
                 </button>
             </div>

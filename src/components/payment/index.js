@@ -17,7 +17,6 @@ import HelpBitcoinWallet from '../helpBitcoinWallet';
 import QRURI from '../qrURI';
 
 export default function Payment(props) {
-    const [loading, setLoading] = useState(true);
     const [showAddFundModal, setShowAddFundModal] = useState(false);
     const [showResultModal, setShowResultModal] = useState(false);
 
@@ -98,7 +97,7 @@ export default function Payment(props) {
                         await biconomy.current.init();
                         const buyerBalance = await getBalance();
                         setBuyerBalance(buyerBalance);
-                        setTimeout(() => setLoading(false), 3000);
+                        setTimeout(() => props.setLoading(false), 3000);
                     };
                     initBiconomy();
                 }
@@ -113,7 +112,7 @@ export default function Payment(props) {
                             await biconomy.current.init();
                             const buyerBalance = await getBalance();
                             setBuyerBalance(buyerBalance);
-                            setTimeout(() => setLoading(false), 3000);
+                            setTimeout(() => props.setLoading(false), 3000);
                         };
                         initBiconomy();
                     }
@@ -123,18 +122,20 @@ export default function Payment(props) {
                 }
             }
             else {
-                setLoading(false);
+                props.setLoading(false);
             }
         }
         else {
-            setLoading(false);
+            props.setLoading(false);
         }
-    }, [amount, amountTo, fiatCurrency, props.wallet, params.paymentID, setLoading, setPaymentExist, setPaymentStatus, setSellerAddress, tokenCurrency, buyerAddress]);
+    }, [amount, amountTo, fiatCurrency, props.wallet, params.paymentID, setPaymentExist, setPaymentStatus, setSellerAddress, tokenCurrency, buyerAddress, props]);
 
     const payBill = async () => {
         if (tokenCurrency === "ETH") {
             const enoughBalance = await checkBalance();
             if (enoughBalance) {
+                // let _data = [sessionStorage.getItem('paymentID')]
+
                 const provider = await biconomy.current.provider;
                 const contractInstance = new ethers.Contract(
                     process.env.REACT_APP_CONTRACT_ADDRESS,
@@ -162,6 +163,10 @@ export default function Payment(props) {
 
                 biconomy.current.on("txMined", (data) => {
                     axios.get(process.env.REACT_APP_API_URL + `/transactions/save/${data.hash}/pay/${amount}/${params.paymentID}`).then(async (result) => {
+                    }).catch(async (err) => {
+                        // console.log(err);
+                    });
+                    axios.get(process.env.REACT_APP_API_URL + `/dag/newBlock/${params.paymentID}/${buyerAddress}/${sellerAddress}/${amount}`).then(async (result) => {
                     }).catch(async (err) => {
                         // console.log(err);
                     });
@@ -279,9 +284,9 @@ export default function Payment(props) {
 
     return (
         <div className='container'>
-            {loading
+            {props.loading
                 ?
-                <SpinnerRoundFilled enabled={loading} color={"#3f5063"} />
+                <SpinnerRoundFilled enabled={props.loading} color={"#3f5063"} />
                 :
                 <div className='main'>
                     {props.wallet === ""
@@ -308,7 +313,7 @@ export default function Payment(props) {
                                             }
                                             <p>Billing amount : {amount} {fiatCurrency} ~ {amountTo} {tokenCurrency}</p>
                                             <label htmlFor='tokenSelection'>Select Token you will pay for.</label><br />
-                                            <select id='tokenSelection' className='vodiapicker' onChange={(e) => {
+                                            <select id='tokenSelection' onChange={(e) => {
                                                 setTokenCurrency(e.target.value);
                                                 const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${tokenCurrency}/${fiatCurrency}/${amount}`;
 
@@ -363,13 +368,13 @@ export default function Payment(props) {
                                                     : null
                                                 }
                                             </select><br />
-                                            <div className="token-select">
+                                            {/* <div className="token-select">
                                                 <button className="btn-select" value=""></button>
                                                 <div className="b">
                                                     <ul id="a"></ul>
                                                 </div>
-                                            </div>
-                                            <span>{buyerBalance}</span><br />
+                                            </div> */}
+                                            <span>{buyerBalance} ETH</span><br />
                                             {tokenCurrency === 'BTC'
                                                 ?
                                                 <QRURI sellerAddress={sellerAddress} amount={amountTo.toString()} message={'Pay for ' + sellerAddress + ' with amount = ' + amountTo.toString() + ' BTC'} label={'BTC'} />
@@ -446,8 +451,8 @@ export default function Payment(props) {
                         </>
                     }
                     <FundModal showAddFundModal={showAddFundModal} buyerAddress={buyerAddress} buyerBalance={getBalance} amountTo={amountTo} tokenCurrency={tokenCurrency} fiatCurrency={fiatCurrency} setTxHash={(txHash) => { setResultTxHash(txHash); }} setShowResultModal={(show) => { setShowResultModal(show); }} onClose={() => { setShowAddFundModal(false); }} />
-                    <ResultModal showResultModal={showResultModal} onClose={() => { setShowResultModal(false); setLoading(true); }} resultTxHash={resultTxHash} />
-                    <ChooseWallet showModalSelectWallet={props.showModalSelectWallet} onClose={() => { props.setShowModalSelectWallet(false); setLoading(true); }} setBuyerAddress={(buyerAddress) => { setBuyerAddress(buyerAddress); }} setWalletType={(walletType) => { props.setWallet(walletType); }} setTokenCurrency={(tokenCurrency) => { setTokenCurrency(tokenCurrency); }} setAmountTo={(amountTo) => { setAmountTo(amountTo); }} fiatCurrency={fiatCurrency} tokenCurrency={tokenCurrency} amount={amount} />
+                    <ResultModal showResultModal={showResultModal} onClose={() => { setShowResultModal(false); props.setLoading(true); }} resultTxHash={resultTxHash} />
+                    <ChooseWallet showModalSelectWallet={props.showModalSelectWallet} onClose={() => { props.setShowModalSelectWallet(false); props.setLoading(true); }} setBuyerAddress={(buyerAddress) => { setBuyerAddress(buyerAddress); }} setWalletType={(walletType) => { props.setWallet(walletType); }} setTokenCurrency={(tokenCurrency) => { setTokenCurrency(tokenCurrency); }} setAmountTo={(amountTo) => { setAmountTo(amountTo); }} fiatCurrency={fiatCurrency} tokenCurrency={tokenCurrency} amount={amount} />
                 </div >
             }
         </div >

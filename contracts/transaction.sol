@@ -207,7 +207,7 @@ contract CP_Contract_Wallet is ERC2771Context, Ownable {
         return balances[sender];
     }
 
-    function getContractBalance() external view onlyOwner returns(uint){
+    function getContractBalance() external view returns(uint){
         return address(this).balance;
     }
 

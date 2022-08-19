@@ -12,12 +12,22 @@ import BridgeWidget from './components/bridgeWidget';
 function App() {
   const [wallet, setWallet] = useState("");
   const [showModalSelectWallet, setShowModalSelectWallet] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(()=>{
+    if (wallet !== "") {
+      setLoading(true);
+    }
+    else {
+      setLoading(false);
+    }
+  }, [wallet])
 
   return (
     <>
-      <Header wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} />
+      <Header wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} showModalSelectWallet={showModalSelectWallet}/>
       <Routes>
-        <Route path="/:paymentID" element={<Payment showModalSelectWallet={showModalSelectWallet} wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} />} />
+        <Route path="/:paymentID" element={<Payment loading={loading} setLoading={(bool: boolean)=>{setLoading(bool)}} showModalSelectWallet={showModalSelectWallet} wallet={wallet} setWallet={(walletType: string) => { setWallet(walletType) }} setShowModalSelectWallet={(show: boolean) => { setShowModalSelectWallet(show) }} />} />
         <Route path="/hyphen" element={<BridgeWidget />} />
       </Routes>
     </>
