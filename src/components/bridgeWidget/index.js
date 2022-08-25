@@ -8,14 +8,18 @@ export default function BridgeWidget() {
     const widget = HyphenWidget.default.init(
       document.getElementById("widget"),
       {
-        dAppName: "cp kov",
+        dAppName: "cp goerli",
         showWidget: true,
         showCloseButton: false,
+        showChangeAddress: false,
         env: "test",
         apiKeys: {
-          Ethereum: "Jy_AJCwnO.49dcee52-b29a-4ec5-91ea-f1a71f9793f6",
+          Ethereum: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
+          Polygon: process.env.REACT_APP_POLY_BICONOMY_APIKEY,
+          Avalanche: process.env.REACT_APP_AVA_BICONOMY_APIKEY,
+          Binance: process.env.REACT_APP_BSC_BICONOMY_APIKEY
         },
-        tag: "cp kov"
+        tag: "cp goerli"
       }
     );
 

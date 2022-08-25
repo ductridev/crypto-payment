@@ -47,7 +47,7 @@ export default function FundModal(props) {
                 const buyerBalance = await props.buyerBalance;
                 return buyerBalance;
             }
-            console.log(getBalance());
+            // console.log(getBalance());
             const api = process.env.REACT_APP_API_URL + `/exchangeToken2Fiat/${props.tokenCurrency}/${props.fiatCurrency}/${props.amountTo - getBalance()}`;
 
             axios.get(`${api}`).then(async (result) => {

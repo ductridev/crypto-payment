@@ -22,8 +22,6 @@ export default function Payment(props) {
 
     const [resultTxHash, setResultTxHash] = useState("");
 
-    const [transactionStatus, setTransactionStatus] = useState("");
-
     const [buyerAddress, setBuyerAddress] = useState("");
 
     const [sellerAddress, setSellerAddress] = useState("");
@@ -39,18 +37,6 @@ export default function Payment(props) {
     const params = useParams()
 
     useEffect(() => {
-        console.log('mount');
-
-        var script = document.createElement('script');
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js";
-        document.getElementsByTagName('head')[0].appendChild(script);
-        script.async = true;
-
-        var script1 = document.createElement('script');
-        script1.src = "utils/addImgIntoSelectOption.js";
-        document.getElementsByTagName('head')[0].appendChild(script1);
-        script1.async = true;
-
         if (typeof params.paymentID !== 'undefined' && params.paymentID !== "") {
             sessionStorage.setItem('paymentID', params.paymentID);
             axios.get(process.env.REACT_APP_API_URL + `/getPayment/${params.paymentID}`).then(async (result) => {
@@ -63,7 +49,7 @@ export default function Payment(props) {
                     setFiatCurrency(result.data.currency);
                     setAmount(parseFloat(result.data.amount));
 
-                    const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${tokenCurrency}/${fiatCurrency}/${amount}`;
+                    const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${tokenCurrency}/${result.data.currency}/${amount}`;
 
                     axios.get(`${api}`).then(async (result) => {
                         setAmountTo(result.data.amountTo);
@@ -386,8 +372,8 @@ export default function Payment(props) {
                                                 <>
                                                     <button onClick={payBill} className="pt-3.5 pb-3 px-6 rounded-full bg-hyphen-purple bg-opacity-20 border-hyphen-purple/10 border text-hyphen-purple-dark/80 font-semibold disabled:text-hyphen-purple/20 disabled: disabled:bg-opacity-10 disabled:cursor-not-allowed">Process payment</button>
                                                     {
-                                                        transactionStatus !== ""
-                                                            ? <p>{transactionStatus}</p>
+                                                        resultTxHash !== ""
+                                                            ? <p>{resultTxHash}</p>
                                                             : null
                                                     }
                                                 </>
@@ -398,8 +384,8 @@ export default function Payment(props) {
                                                 <>
                                                     <button onClick={payBill} className="pt-3.5 pb-3 px-6 rounded-full bg-hyphen-purple bg-opacity-20 border-hyphen-purple/10 border text-hyphen-purple-dark/80 font-semibold disabled:text-hyphen-purple/20 disabled: disabled:bg-opacity-10 disabled:cursor-not-allowed">Process payment</button>
                                                     {
-                                                        transactionStatus !== ""
-                                                            ? <p>{transactionStatus}</p>
+                                                        resultTxHash !== ""
+                                                            ? <p>{resultTxHash}</p>
                                                             : null
                                                     }
                                                 </>
@@ -425,6 +411,10 @@ export default function Payment(props) {
                                                 </>
                                                 : null
                                             }
+                                            <>
+                                                <FundModal showAddFundModal={showAddFundModal} buyerAddress={buyerAddress} buyerBalance={getBalance} amountTo={amountTo} tokenCurrency={tokenCurrency} fiatCurrency={fiatCurrency} setTxHash={(txHash) => { setResultTxHash(txHash); }} setShowResultModal={(show) => { setShowResultModal(show); }} onClose={() => { setShowAddFundModal(false); }} />
+                                                <ResultModal showResultModal={showResultModal} onClose={() => { setShowResultModal(false); props.setLoading(true); }} resultTxHash={resultTxHash} />
+                                            </>
                                         </div >
                                         : null
                                     }
@@ -450,8 +440,6 @@ export default function Payment(props) {
                             }
                         </>
                     }
-                    <FundModal showAddFundModal={showAddFundModal} buyerAddress={buyerAddress} buyerBalance={getBalance} amountTo={amountTo} tokenCurrency={tokenCurrency} fiatCurrency={fiatCurrency} setTxHash={(txHash) => { setResultTxHash(txHash); }} setShowResultModal={(show) => { setShowResultModal(show); }} onClose={() => { setShowAddFundModal(false); }} />
-                    <ResultModal showResultModal={showResultModal} onClose={() => { setShowResultModal(false); props.setLoading(true); }} resultTxHash={resultTxHash} />
                     <ChooseWallet showModalSelectWallet={props.showModalSelectWallet} onClose={() => { props.setShowModalSelectWallet(false); props.setLoading(true); }} setBuyerAddress={(buyerAddress) => { setBuyerAddress(buyerAddress); }} setWalletType={(walletType) => { props.setWallet(walletType); }} setTokenCurrency={(tokenCurrency) => { setTokenCurrency(tokenCurrency); }} setAmountTo={(amountTo) => { setAmountTo(amountTo); }} fiatCurrency={fiatCurrency} tokenCurrency={tokenCurrency} amount={amount} />
                 </div >
             }

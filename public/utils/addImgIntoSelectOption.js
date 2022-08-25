@@ -39,6 +39,6 @@ if (sessioncoin) {
     $('.btn-select').attr('value', sessioncoin);
 } else {
     var coinIndex = coinArray.indexOf('ETH');
-    console.log(coinIndex);
+    // console.log(coinIndex);
     $('.btn-select').html(coinArray[coinIndex]);
 }
