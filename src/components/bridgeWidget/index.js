@@ -1,43 +1,38 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import * as HyphenWidget from "@biconomy/hyphen-widget";
 import "@biconomy/hyphen-widget/dist/index.css";
 
-function BridgeWidget() {
-    const [hyphenWidget, setHyphenWidget] = useState();
-  
-    useEffect(() => {
-      const widget = HyphenWidget.default.init(
-        document.getElementById("widget"),
-        {
-          dAppName: "cp kov",
-          showWidget: true,
-          showCloseButton: false,
-          env: "test",
-          apiKeys: {
-            Ethereum: "Jy_AJCwnO.49dcee52-b29a-4ec5-91ea-f1a71f9793f6",
-          },
-        }
-      );
-  
-      if (widget) {
-        setHyphenWidget(widget);
+export default function BridgeWidget() {
+
+  useEffect(() => {
+    const widget = HyphenWidget.default.init(
+      document.getElementById("widget"),
+      {
+        dAppName: "cp goerli",
+        showWidget: true,
+        showCloseButton: false,
+        showChangeAddress: false,
+        env: "test",
+        apiKeys: {
+          Ethereum: process.env.REACT_APP_ETH_BICONOMY_APIKEY,
+          Polygon: process.env.REACT_APP_POLY_BICONOMY_APIKEY,
+          Avalanche: process.env.REACT_APP_AVA_BICONOMY_APIKEY,
+          Binance: process.env.REACT_APP_BSC_BICONOMY_APIKEY
+        },
+        tag: "cp goerli"
       }
-    }, []);
-  
-    function handleOpen() {
-      hyphenWidget.open();
+    );
+
+    if (widget) {
+      widget.open();
     }
-  
-    function handleClose() {
-      hyphenWidget.close();
-    }
-  
-    return <div className="BridgeWidget">
-      <button onClick={handleOpen}>Open Widget</button>
-      <button onClick={handleClose}>Close Widget</button>
-  
-      <div id="widget"></div>
-    </div>;
-  }
-  
-  export default BridgeWidget;
+  }, []);
+
+  return (
+    <div className='container'>
+      <div className='main'>
+        <div id="widget"></div>
+      </div>
+    </div>
+  )
+}

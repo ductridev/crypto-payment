@@ -29,7 +29,7 @@ export default function ChooseWallet(props) {
 
     return (
         <>
-            <Modal isOpen={props.showModalSelectWallet} onRequestClose={props.onClose} appElement={document.getElementById('main')} style={customStyles}>
+            <Modal isOpen={props.showModalSelectWallet} onRequestClose={props.onClose} appElement={document.getElementById('main')} style={customStyles} shouldCloseOnOverlayClick={false}>
                 <h3>Connect your wallet</h3>
                 <div>
                     <div className="ConnectWalletModal_buttons">
@@ -43,7 +43,7 @@ export default function ChooseWallet(props) {
                                 props.setWalletType("MetaMask");
                                 props.setTokenCurrency("ETH");
 
-                                const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
+                                const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
 
                                 axios.get(`${api}`).then(async (result) => {
                                     props.setAmountTo(result.data.amountTo);
@@ -53,10 +53,10 @@ export default function ChooseWallet(props) {
                                 alert("Please install MetaMask Wallet");
                             }
                         }}>
-                            <img src="MetaMask.svg" alt="Metamask" style={{width: '128px'}} />MetaMask
+                            <img src="assets/MetaMask.svg" alt="Metamask" style={{width: '128px'}} />MetaMask
                         </button>
                         <button className="text-300" onClick={() => { }}>
-                            <img src="WalletConnect.svg" alt="WalletConnect" style={{width: '128px'}} />WalletConnect
+                            <img src="assets/WalletConnect.svg" alt="WalletConnect" style={{width: '128px'}} />WalletConnect
                         </button>
                         <button className="text-300" onClick={async () => {
                             window.near = await NEARconnect(config);
@@ -71,7 +71,7 @@ export default function ChooseWallet(props) {
                                 props.setWalletType("NEAR");
                                 props.setTokenCurrency("NEAR");
 
-                                const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
+                                const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
 
                                 axios.get(`${api}`).then(async (result) => {
                                     props.setAmountTo(result.data.amountTo);
@@ -81,7 +81,7 @@ export default function ChooseWallet(props) {
                                 window.senderNEARAccount = senderNEARAccount;
                             }
                         }}>
-                            <img src="NEARWallet.png" alt="NEAR Wallet" style={{width: '128px'}} />NEAR
+                            <img src="assets/NEARWallet.png" alt="NEAR Wallet" style={{width: '128px'}} />NEAR
                         </button>
                         <button className="text-300" onClick={
                             async () => {
@@ -93,7 +93,7 @@ export default function ChooseWallet(props) {
                                     props.setWalletType("BinanceWallet");
                                     props.setTokenCurrency("ETH");
 
-                                    const api = process.env.REACT_APP_API_URL + `/exchange/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
+                                    const api = process.env.REACT_APP_API_URL + `/exchangeFiat2Token/${props.tokenCurrency}/${props.fiatCurrency}/${props.amount}`;
 
                                     axios.get(`${api}`).then(async (result) => {
                                         props.setAmountTo(result.data.amountTo);
@@ -104,7 +104,7 @@ export default function ChooseWallet(props) {
                                 }
                             }
                         }>
-                            <img src="BinanceWallet.png" alt="Binance Wallet" style={{width: '128px'}} />Binance Wallet
+                            <img src="assets/BinanceWallet.png" alt="Binance Wallet" style={{width: '128px'}} />Binance Wallet
                         </button>
                     </div>
                 </div>

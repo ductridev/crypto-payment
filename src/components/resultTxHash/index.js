@@ -15,10 +15,10 @@ export default function ResultModal(props) {
 
     return (
         <>
-            <Modal show={props.showResultModal} onHide={props.onClose} appElement={document.getElementById('main')} style={customStyles}>
+            <Modal show={props.showResultModal} onHide={props.onClose} appElement={document.getElementById('main')} style={customStyles} shouldCloseOnOverlayClick={false}>
                 <h3>Modal heading</h3>
                 <div>
-                    Your transaction hash: <a href={"https://kovan.etherscan.io/tx/" + props.resultTxHash} target={"_blank"} rel="noreferrer">{props.resultTxHash}</a>
+                    Your transaction hash: <a href={"https://goerli.etherscan.io/tx/" + props.resultTxHash} target={"_blank"} rel="noreferrer">{props.resultTxHash}</a>
                 </div>
                 <div>
                     <Button variant="secondary" onClick={props.onClose}>
